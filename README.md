@@ -3,10 +3,10 @@ FV3 EnKF workflow in the WoF framework
 
 ## Required outside code and programs
 
-static/CHGRES/Fix_sar
-static/FV3LAM/fix_am
-static/FV3LAM/fix_am/fix_co2_proj
-static/FV3LAM/Fix_sar
+static/CHGRES/Fix_sar 
+static/FV3LAM/fix_am 
+static/FV3LAM/fix_am/fix_co2_proj 
+static/FV3LAM/Fix_sar 
 
 exec/CHGRES:
 chgres_cube.exe

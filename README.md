@@ -22,5 +22,5 @@ enkf_fv3reg.x           gen_be_ensmean.x      gsi.exe               move_DA_upda
 
 GSI_WoF/  
 LBC_update/  
-ensmean/
-ufs-srweather-app/
+ensmean/   
+ufs-srweather-app/  

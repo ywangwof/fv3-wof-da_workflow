@@ -1,0 +1,48 @@
+total_member:            1
+PE_MEMBER01:             550
+start_year:              _YEAR_
+start_month:             _MON_
+start_day:               _DAY_
+start_hour:              _HOUR_
+start_minute:            _MIN_
+start_second:            0
+nhours_fcst:             _FCSTLEN_
+RUN_CONTINUE:            .false.
+ENS_SPS:                 .false.
+dt_atmos:                20
+cpl:                     .false.
+calendar:                'julian'
+memuse_verbose:          .false.
+atmos_nthreads:          1
+use_hyper_thread:        .false.
+ncores_per_node:         56
+debug_affinity:          .true.
+restart_interval:        _RESTART_INTV_
+output_1st_tstep_rst:    .false.
+quilting:                .true.
+print_esmf:              .false.
+
+write_groups:            1
+write_tasks_per_group:   56
+num_files:               2
+filename_base:           'dyn''phy'
+output_file:             'netcdf'
+write_nemsioflip:        .false.
+write_fsyncflag:         .false.
+
+output_grid:             'lambert_conformal'
+cen_lon:                 -97.5
+cen_lat:                 38.5
+stdlat1:                 38.5
+stdlat2:                 38.5
+nx:                      1746
+ny:                      1014
+lon1:                    -122.17364391
+lat1:                    21.88588562
+dx:                      3000.0
+dy:                      3000.0
+
+nfhout:                  1              # Output frequency in hours after forecast hour "nfhmax_hf"
+nfhmax_hf:               60             # Number of forecast hours until output frequency "nfhout" takes affect
+nfhout_hf:               1              # Output frequency in hours until forecast hour "nfhmax_hf"
+nsout:                   -1             # Output frequency in time steps (positive values override "nfhout" and "nfhout_hf")

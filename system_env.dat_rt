@@ -1,0 +1,101 @@
+#! /bin/sh
+#
+# ---- April 3 2021, initially created by Y. Wang & X. Wang (OU MAP Lab)
+#                    yongming.wang@ou.edu  xuguang.wang@ou.edu
+
+  # --- environmental variables
+  #. /etc/profile
+  #. ~/.bashrc
+  #unalias -a
+  #user=`whoami`
+  #usrname=tg826358
+
+  source /lfs4/NAGAPE/hpc-wof1/ywang/EPIC2/oumap/ufs-srweather-app/env/build_jet_intel.env
+  module use -a /lfs4/NAGAPE/hpc-wof1/ywang/EPIC2/oumap/ufs-srweather-app/env
+  module load build_jet.env
+  module load pnetcdf/1.11.2
+
+  todaydate=20210527
+  nextdate=20210528
+
+  # --- batch system
+  # ---
+  ACCOUNT="hpc-wof1"
+  QUEUE="sjet,vjet,xjet,kjet"
+  QUEUE1="bigmem"
+  QUEUE2="vjet,xjet,kjet"
+  NO_RESERVE=yes
+  COREPERNODE=24
+
+  # --- Paths for script and executable
+  # ---
+  HOMEBASE_DIR="/lfs4/NAGAPE/hpc-wof1/ywang/EPIC2/oumap/da-forecast-workflow"
+
+  SCRIPTS=${HOMEBASE_DIR}/scripts
+  STATIC_DIR=${HOMEBASE_DIR}/static
+  STATIC_DIR_GSI=${STATIC_DIR}/GSI
+  STATIC_DIR_CHGRES=${STATIC_DIR}/CHGRES
+  STATIC_DIR_FV3LAM=${STATIC_DIR}/FV3LAM
+
+  EXEC=${HOMEBASE_DIR}/exec
+  CHGRES_ROOT=${EXEC}/CHGRES
+  FV3LAM_ROOT=${EXEC}/FV3LAM
+  GSI_ROOT=${EXEC}/GSI
+  BEC_ROOT=${EXEC}/BEC
+
+  # --- Case data
+  # ---
+  DATABASE_DIR=/lfs4/NAGAPE/hpc-wof1/ywang/EPIC2/oumap/rundir/${todaydate}
+  OBS_DIR=/lfs4/NAGAPE/hpc-wof1/ywang/EPIC2/oumap/data/${todaydate}
+  GFS_DIR=${OBS_DIR}/ensemble_BG
+  HRRRE_DIR=${OBS_DIR}
+  PREPBUFR_DIR=${OBS_DIR}/prepbufr
+  RADAR_DIR=${OBS_DIR}/radar
+
+  # ---
+  LOG_DIR=${DATABASE_DIR}/log
+  DATAROOT_INI=${DATABASE_DIR}/ini
+
+  # --- Date setting
+  # ---
+  BGBEGTIME_WOF=`date -u +%Y%m%d%H00 -d "${todaydate} 1500"`
+  BGBEGTIME_HRRRE=`date -u +%Y%m%d%H00 -d "${todaydate} 1200"`
+
+  FCST_BEG=$(date -u +"%Y%m%d %H%M" -d "${todaydate} 1700")
+  FCST_END=$(date -u +"%Y%m%d %H%M" -d "${nextdate}  0300")
+
+  INIT_DATE=`date -u +%Y%m%d%H00 -d "${todaydate} 15 0 hours ago"`
+  BEG_DATE=`date -u +%Y%m%d%H00 -d "${todaydate} 15 0 hours ago"`       # cycle start date
+  END_DATE=`date -u +%Y%m%d%H00 -d "${nextdate} 0300"`                  # cycle end date
+  radar_cycle_date=$(date -u +%Y%m%d%H00 -d "${todaydate} 1500")
+  radar_cycle_intv=15
+  # This is temporally used for conventional DA and can be set for radar DA when restarting the DA procedure.
+  DA_INTV=15
+  FCST_LENGTH=18*3600
+
+  # --- Ensemble size
+  # ---
+  ENSSIZE=36
+  ENSSIZE_REAL=36
+  ENSSIZE_BNDY=9
+  showcmd="sbatch" # "sbatch" or "echo sbatch"
+
+  # --- Domain settings
+  # ---
+  nlon=356
+  nlat=356
+  nlev=62
+
+  # --- DA conf.
+  # ---
+  GRID_RATIO=1.0
+  if_rh=0
+  STATIC_BEC=no
+  BETAS=0.2
+  CV_TYPE=UV
+  vloc=0.1
+  hloc="0.4,0.5,0.6"
+  variance=0.5
+  storm_mag=35
+
+# =================== EoF =================

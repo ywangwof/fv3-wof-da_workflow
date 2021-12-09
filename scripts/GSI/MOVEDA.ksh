@@ -30,7 +30,7 @@ ${RM} -rf ${workdir}
 ${MKDIR} -p ${workdir}
 cd ${workdir}
 
-FV3DIR=${HOME_ROOT}/${START_TIME}/fv3prd_mem`printf %04i ${MEM_INDEX}`
+FV3DIR=${HOME_ROOT}/${START_TIME}/fv3prd_mem`printf %04i ${MEM_INDEX#0}`
 
 ANLdir=${FV3DIR}/ANA
 GUESSdir=${FV3DIR}/GUESS

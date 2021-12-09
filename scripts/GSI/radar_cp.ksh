@@ -62,24 +62,48 @@ cd ${DATAHOME}
 #HH=`${DATE} +"%H" -d "${START_TIME}"`
 #mm=`${DATE} +"%M" -d "${START_TIME}"`
 
+vcoords=("00.50" "00.75" "01.00" "01.25" "01.50" "01.75" "02.00" "02.25" "02.50" "02.75" \
+         "03.00" "03.50" "04.00" "04.50" "05.00" "05.50" "06.00" "06.50" "07.00" "07.50" \
+         "08.00" "08.50" "09.00" "10.00" "11.00" "12.00" "13.00" "14.00" "15.00" "16.00" \
+         "17.00" "18.00" "19.00")
+
 startsec=$(${DATE} +"%s" -d "${START_TIME}")
 endsec=$(${DATE} +"%s" -d "${START_TIME} 10 minutes ago")
-for ((i=startsec;i>=endsec;i-=60));do
-    mrmstimestr=$(${DATE} +"%Y%m%d-%H%M%S" -d @$i)
-    mrmsfile="${NSSLMOSAICNC}/Reflectivity3D/00.50/${mrmstimestr}.netcdf"
-    if [[ -r $mrmsfile ]]; then
-        echo "Found $mrmsfile."
-        gridtimestr=$(${DATE} +"%Y%m%d%H%M" -d @$i)
-        break
-    fi
+n=0
+for vlev in ${vcoords[@]}; do
+    for ((i=startsec;i>=endsec;i-=60));do
+        mrmstimestr=$(${DATE} +"%Y%m%d-%H%M%S" -d @$i)
+        mrmsfile="${NSSLMOSAICNC}/Reflectivity3D/$vlev/${mrmstimestr}.netcdf"
+        echo "Checking $mrmsfile ..."
+        if [[ -r $mrmsfile ]]; then
+            echo "Found $mrmsfile."
+            let n+=1
+            if [[ $n -eq 1 ]]; then
+                gridtimestr=$(${DATE} +"%Y%m%d%H%M" -d @$i)
+                out3dnc="${NSSLMOSAICNC}/Reflectivity3D/Gridded_ref_${gridtimestr}.nc"
+                outlist="${NSSLMOSAICNC}/Reflectivity3D/Gridded_ref_${gridtimestr}.txt"
+                echo "$vlev" > $outlist
+            fi
+            echo "$mrmsfile" >> $outlist
+            break
+        fi
+    done
 done
+
+echo "Found $n MRMS file at $gridtimestr"
+echo "$out3dnc"
+echo "$outlist"
+
+if [[ $n -ne 33 ]]; then
+    exit 1
+fi
 
 export exec_fp=${GSIEXEC}/merge3d.x
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/apps/netcdf/4.7.4/intel/18.0.5/lib
 
-echo "Running '${exec_fp} $mrmsfile' in $(pwd) ...."
+echo "Running '${exec_fp} $outlist $out3dnc' in $(pwd) ...."
 #${MPIRUN} -n ${PROC} -o ${BEGPROC} ${exec_fp} ${BNDY_IND}
-${MPIRUN} -n 1 ${exec_fp} ${mrmsfile}
+${MPIRUN} -n 1 ${exec_fp} ${outlist} ${out3dnc}
 
 if [[ -e ${NSSLMOSAICNC}/Reflectivity3D/Gridded_ref_${gridtimestr}.nc  ]]; then
   echo "Coying ${NSSLMOSAICNC}/Reflectivity3D/Gridded_ref_${gridtimestr}.nc to $(pwd)/Gridded_ref.nc ...."

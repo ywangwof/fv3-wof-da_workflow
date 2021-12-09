@@ -1,0 +1,1029 @@
+<?xml version="1.0"?>
+<!DOCTYPE workflow
+[
+
+    <!ENTITY EXPenvir "NSSL">
+    <!ENTITY STARTYEAR "2021">
+    <!ENTITY STARTMONTH "05">
+    <!ENTITY STARTDAY "27">
+    <!ENTITY STARTHOUR "15">
+
+    <!ENTITY ENDYEAR "2021">
+    <!ENTITY ENDMONTH "05">
+    <!ENTITY ENDDAY "28">
+    <!ENTITY ENDHOUR "03">
+
+    <!ENTITY EVENTDATE "20210527">
+    <!ENTITY NEXTHOUR "16">
+    <!ENTITY TERMHOUR "02">
+
+    <!ENTITY USER "Yunheng.Wang">
+    <!ENTITY machine "jet">
+    <!ENTITY ACCOUNT "hpc-wof1">
+
+    <!ENTITY HOMEBASE_DIR "/lfs4/NAGAPE/hpc-wof1/ywang/EPIC2/oumap/da-forecast-workflow">
+    <!ENTITY RUNDIR "/lfs4/NAGAPE/hpc-wof1/ywang/EPIC2/oumap/rundir/&EXPenvir;">
+    <!ENTITY SCRIPTS "&HOMEBASE_DIR;/scripts">
+    <!ENTITY LOGDIR "&RUNDIR;/&EVENTDATE;/log">
+    <!ENTITY CYCDIR "&RUNDIR;/&EVENTDATE;/cycle">
+    <!ENTITY DATAROOT_INI "&RUNDIR;/&EVENTDATE;/ini">
+
+    <!ENTITY PREPBUFR_DIR "/lfs4/NAGAPE/hpc-wof1/ywang/EPIC2/oumap/data/&EVENTDATE;/prepbufr">
+    <!ENTITY RADAROBS_DIR "/lfs4/NAGAPE/hpc-wof1/ywang/EPIC2/oumap/data/&EVENTDATE;/radar">
+
+    <!ENTITY secondsforward "900">
+    <!ENTITY NLONS "356">
+    <!ENTITY NLATS "356">
+    <!ENTITY NLEVS "62">
+]>
+
+<!--  ************************************************************* -->
+<!--  ******************* STARTING THE WORKFLOW ******************* -->
+
+<workflow realtime="F" scheduler="slurm" cyclelifespan="10:01:00:00" cyclethrottle="1" taskthrottle="60">
+
+    <!--
+    <cycledef group="regional">&STARTYEAR;&STARTMONTH;&STARTDAY;&STARTHOUR;15 &ENDYEAR;&ENDMONTH;&ENDDAY;&ENDHOUR;00 00:15:00</cycledef>
+    -->
+    <cycledef group="inithour"> 15 &STARTHOUR; &STARTDAY; &STARTMONTH; &STARTYEAR; *</cycledef>
+
+    <cycledef group="hourly"> 0 &NEXTHOUR;-23  &STARTDAY; &STARTMONTH; &STARTYEAR; *</cycledef>
+    <cycledef group="15min"> 15 &NEXTHOUR;-23  &STARTDAY; &STARTMONTH; &STARTYEAR; *</cycledef>
+    <cycledef group="15min"> 30 &STARTHOUR;-23 &STARTDAY; &STARTMONTH; &STARTYEAR; *</cycledef>
+    <cycledef group="15min"> 45 &STARTHOUR;-23 &STARTDAY; &STARTMONTH; &STARTYEAR; *</cycledef>
+
+    <cycledef group="15min"> 15 0-&TERMHOUR; &ENDDAY; &ENDMONTH; &ENDYEAR; *</cycledef>
+    <cycledef group="15min"> 30 0-&TERMHOUR; &ENDDAY; &ENDMONTH; &ENDYEAR; *</cycledef>
+    <cycledef group="15min"> 45 0-&TERMHOUR; &ENDDAY; &ENDMONTH; &ENDYEAR; *</cycledef>
+    <cycledef group="hourly"> 0 0-&ENDHOUR;  &ENDDAY; &ENDMONTH; &ENDYEAR; *</cycledef>
+
+
+    <log>
+        <cyclestr>&LOGDIR;/da_cycles_@Y@m@d@H@M.log</cyclestr>
+    </log>
+
+
+    <!--  **********************************************************************  -->
+    <!-- Run foreward FV3 -->
+
+    <metatask name="FV3FRD">
+
+        <var name="MEMBER">01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36</var>
+
+        <task name="fv3frdini_#MEMBER#" cycledefs="inithour" maxtries="3">
+
+          <command>&SCRIPTS;/FV3LAM/fv3lam_cycle.ksh</command>
+          <account>&ACCOUNT;</account>
+          <queue>batch</queue>
+          <cores>100</cores>
+          <walltime>00:10:00</walltime>
+          <jobname><cyclestr offset="-00:15:00">fv3frd_@H@M-#MEMBER#</cyclestr></jobname>
+          <stdout><cyclestr>&CYCDIR;/@Y@m@d@H@M/shdir</cyclestr><cyclestr offset="-00:15:00">/fv3frd_@H@M-#MEMBER#.out</cyclestr></stdout>
+          <stderr><cyclestr>&CYCDIR;/@Y@m@d@H@M/shdir</cyclestr><cyclestr offset="-00:15:00">/fv3frd_@H@M-#MEMBER#.err</cyclestr></stderr>
+
+          <envar>
+            <name>eventdate</name>
+            <value>&EVENTDATE;</value>
+          </envar>
+          <envar>
+            <name>CCPP_SUITE</name>
+            <value>&EXPenvir;</value>
+          </envar>
+          <envar>
+            <name>INIHOME</name>
+            <value>&DATAROOT_INI;</value>
+          </envar>
+          <envar>
+            <name>ENS_MEM_START</name>
+            <value>#MEMBER#</value>
+          </envar>
+          <envar>
+            <name>ENS_MEMNUM_THIS</name>
+            <value>1</value>
+          </envar>
+          <envar>
+            <name>INIT_TIME</name>
+            <value>&EVENTDATE;&STARTHOUR;00</value>
+          </envar>
+          <envar>
+            <name>START_TIME</name>
+            <value><cyclestr offset="-00:15:00">@Y@m@d@H@M</cyclestr></value>
+          </envar>
+          <envar>
+            <name>FCST_LENGTH</name>
+            <value>&secondsforward;</value>
+          </envar>
+          <envar>
+            <name>FV3LAM_ROOT</name>
+            <value>&HOMEBASE_DIR;/exec/FV3LAM</value>
+          </envar>
+          <envar>
+            <name>FV3LAM_STATIC</name>
+            <value>&HOMEBASE_DIR;/static/FV3LAM</value>
+          </envar>
+          <envar>
+            <name>DATAHOME</name>
+            <value>&CYCDIR;</value>
+          </envar>
+          <envar>
+            <name>WORK_ROOT</name>
+            <value><cyclestr>&CYCDIR;/@Y@m@d@H@M</cyclestr></value>
+          </envar>
+
+        </task>
+
+        <task name="fv3frdmem_#MEMBER#" cycledefs="15min,hourly" maxtries="3">
+
+          <command>&SCRIPTS;/FV3LAM/fv3lam_cycle.ksh</command>
+          <account>&ACCOUNT;</account>
+          <queue>batch</queue>
+          <cores>100</cores>
+          <walltime>00:10:00</walltime>
+          <jobname><cyclestr offset="-00:15:00">fv3frd_@H@M-#MEMBER#</cyclestr></jobname>
+          <stdout><cyclestr>&CYCDIR;/@Y@m@d@H@M/shdir</cyclestr><cyclestr offset="-00:15:00">/fv3frd_@H@M-#MEMBER#.out</cyclestr></stdout>
+          <stderr><cyclestr>&CYCDIR;/@Y@m@d@H@M/shdir</cyclestr><cyclestr offset="-00:15:00">/fv3frd_@H@M-#MEMBER#.err</cyclestr></stderr>
+
+          <envar>
+            <name>eventdate</name>
+            <value>&EVENTDATE;</value>
+          </envar>
+          <envar>
+            <name>CCPP_SUITE</name>
+            <value>&EXPenvir;</value>
+          </envar>
+          <envar>
+            <name>INIHOME</name>
+            <value>&DATAROOT_INI;</value>
+          </envar>
+          <envar>
+            <name>ENS_MEM_START</name>
+            <value>#MEMBER#</value>
+          </envar>
+          <envar>
+            <name>ENS_MEMNUM_THIS</name>
+            <value>1</value>
+          </envar>
+          <envar>
+            <name>INIT_TIME</name>
+            <value>&EVENTDATE;&STARTHOUR;00</value>
+          </envar>
+          <envar>
+            <name>START_TIME</name>
+            <value><cyclestr offset="-00:15:00">@Y@m@d@H@M</cyclestr></value>
+          </envar>
+          <envar>
+            <name>FCST_LENGTH</name>
+            <value>&secondsforward;</value>
+          </envar>
+          <envar>
+            <name>FV3LAM_ROOT</name>
+            <value>&HOMEBASE_DIR;/exec/FV3LAM</value>
+          </envar>
+          <envar>
+            <name>FV3LAM_STATIC</name>
+            <value>&HOMEBASE_DIR;/static/FV3LAM</value>
+          </envar>
+          <envar>
+            <name>DATAHOME</name>
+            <value>&CYCDIR;</value>
+          </envar>
+          <envar>
+            <name>WORK_ROOT</name>
+            <value><cyclestr>&CYCDIR;/@Y@m@d@H@M</cyclestr></value>
+          </envar>
+
+          <dependency>
+              <metataskdep metatask="UPDATELBC" cycle_offset="-00:15:00"/>
+          </dependency>
+        </task>
+
+    </metatask>
+
+    <!--  **********************************************************************  -->
+    <!-- BUFR data workflow, hourly-->
+
+    <!-- Prepare prebufr data -->
+    <task name="convobs" cycledefs="hourly" maxtries="1">
+        <command>&SCRIPTS;/GSI/conventional.ksh</command>
+        <account>&ACCOUNT;</account>
+        <queue>batch</queue>
+        <cores>1</cores>
+        <walltime>00:10:00</walltime>
+        <jobname><cyclestr>convobs_@H@M</cyclestr></jobname>
+        <stdout><cyclestr>&CYCDIR;/@Y@m@d@H@M/shdir/convobs_@H@M.out</cyclestr></stdout>
+        <stderr><cyclestr>&CYCDIR;/@Y@m@d@H@M/shdir/convobs_@H@M.err</cyclestr></stderr>
+
+        <envar>
+          <name>START_TIME</name>
+          <value><cyclestr>@Y@m@d@H@M</cyclestr></value>
+        </envar>
+        <envar>
+          <name>DATAHOME</name>
+          <value><cyclestr>&CYCDIR;/@Y@m@d@H@M/obsprd</cyclestr></value>
+        </envar>
+        <envar>
+          <name>PREPBUFR</name>
+          <value>&PREPBUFR_DIR;</value>
+        </envar>
+        <envar>
+          <name>EARLY</name>
+          <value>0</value>
+        </envar>
+
+    </task>
+
+    <!-- Prepare radar data hourly -->
+    <task name="radarobs" cycledefs="inithour,15min,hourly" maxtries="1">
+        <command>&SCRIPTS;/GSI/radar_cp.ksh</command>
+        <account>&ACCOUNT;</account>
+        <queue>batch</queue>
+        <cores>1</cores>
+        <walltime>00:20:00</walltime>
+        <jobname><cyclestr>radarobs_@H@M</cyclestr></jobname>
+        <stdout><cyclestr>&CYCDIR;/@Y@m@d@H@M/shdir/radarobs_@H@M.out</cyclestr></stdout>
+        <stderr><cyclestr>&CYCDIR;/@Y@m@d@H@M/shdir/radarobs_@H@M.err</cyclestr></stderr>
+
+        <envar>
+          <name>START_TIME</name>
+          <value><cyclestr>@Y@m@d@H@M</cyclestr></value>
+        </envar>
+        <envar>
+          <name>DATAHOME</name>
+          <value><cyclestr>&CYCDIR;/@Y@m@d@H@M/obsprd</cyclestr></value>
+        </envar>
+        <envar>
+          <name>NSSLMOSAICNC</name>
+          <value>&RADAROBS_DIR;</value>
+        </envar>
+        <envar>
+          <name>SUBH_TIME</name>
+          <value>00</value>
+        </envar>
+        <envar>
+          <name>GSIEXEC</name>
+          <value>&HOMEBASE_DIR;/exec/GSI</value>
+        </envar>
+    </task>
+
+    <!--  **********************************************************************  -->
+
+    <metatask name="DACYCLES" mode="serial">
+        <var name="OBSTYPE">conv radar</var>
+        <var name="DEPDA">convobs enkf_conv</var>
+        <var name="RADARDA">0 1</var>
+        <var name="CONVDA">1 0</var>
+
+        <!-- Hourly prebufr workflow 1. fgmean_conv -->
+        <task name="fgmean_#OBSTYPE#" cycledefs="hourly" maxtries="1">
+            <command>&SCRIPTS;/GSI/firstguess_ensmean.ksh</command>
+            <account>&ACCOUNT;</account>
+            <queue>batch</queue>
+            <cores>48</cores>
+            <walltime>00:30:00</walltime>
+            <jobname><cyclestr>fgmean_#OBSTYPE#_@H@M</cyclestr></jobname>
+            <stdout><cyclestr>&CYCDIR;/@Y@m@d@H@M/shdir/fgmean_#OBSTYPE#_@H@M.out</cyclestr></stdout>
+            <stderr><cyclestr>&CYCDIR;/@Y@m@d@H@M/shdir/fgmean_#OBSTYPE#_@H@M.err</cyclestr></stderr>
+
+            <envar>
+              <name>PROC</name>
+              <value>48</value>
+            </envar>
+
+            <envar>
+              <name>DATAHOME</name>
+              <value>&CYCDIR;</value>
+            </envar>
+            <envar>
+              <name>GSI_ROOT</name>
+              <value>&HOMEBASE_DIR;/exec/GSI</value>
+            </envar>
+            <envar>
+              <name>STATIC_DIR_GSI</name>
+              <value>&HOMEBASE_DIR;/static/GSI</value>
+            </envar>
+            <envar>
+              <name>ANALYSIS_TIME</name>
+              <value><cyclestr>@Y@m@d@H@M</cyclestr></value>
+            </envar>
+            <envar>
+              <name>WORK_ROOT</name>
+              <value><cyclestr>&CYCDIR;/@Y@m@d@H@M</cyclestr></value>
+            </envar>
+            <envar>
+              <name>ENSEMBLE_SIZE</name>
+              <value>36</value>
+            </envar>
+            <envar>
+              <name>NVAR</name>
+              <value>14</value>
+            </envar>
+            <envar>
+              <name>IF_CONV</name>
+              <value>#CONVDA#</value>
+            </envar>
+
+            <dependency>
+                <and>
+                    <taskdep task="convobs"/>
+                    <or>
+                        <and>
+                           <taskdep task="fv3frdini_01"/>
+                           <taskdep task="fv3frdini_02"/>
+                           <taskdep task="fv3frdini_03"/>
+                           <taskdep task="fv3frdini_04"/>
+                           <taskdep task="fv3frdini_05"/>
+                           <taskdep task="fv3frdini_06"/>
+                           <taskdep task="fv3frdini_07"/>
+                           <taskdep task="fv3frdini_08"/>
+                           <taskdep task="fv3frdini_09"/>
+                           <taskdep task="fv3frdini_10"/>
+                           <taskdep task="fv3frdini_11"/>
+                           <taskdep task="fv3frdini_12"/>
+                           <taskdep task="fv3frdini_13"/>
+                           <taskdep task="fv3frdini_14"/>
+                           <taskdep task="fv3frdini_15"/>
+                           <taskdep task="fv3frdini_16"/>
+                           <taskdep task="fv3frdini_17"/>
+                           <taskdep task="fv3frdini_18"/>
+                           <taskdep task="fv3frdini_19"/>
+                           <taskdep task="fv3frdini_20"/>
+                           <taskdep task="fv3frdini_21"/>
+                           <taskdep task="fv3frdini_22"/>
+                           <taskdep task="fv3frdini_23"/>
+                           <taskdep task="fv3frdini_24"/>
+                           <taskdep task="fv3frdini_25"/>
+                           <taskdep task="fv3frdini_26"/>
+                           <taskdep task="fv3frdini_27"/>
+                           <taskdep task="fv3frdini_28"/>
+                           <taskdep task="fv3frdini_29"/>
+                           <taskdep task="fv3frdini_30"/>
+                           <taskdep task="fv3frdini_31"/>
+                           <taskdep task="fv3frdini_32"/>
+                           <taskdep task="fv3frdini_33"/>
+                           <taskdep task="fv3frdini_34"/>
+                           <taskdep task="fv3frdini_35"/>
+                           <taskdep task="fv3frdini_36"/>
+                        </and>
+                        <and>
+                           <taskdep task="fv3frdmem_01"/>
+                           <taskdep task="fv3frdmem_02"/>
+                           <taskdep task="fv3frdmem_03"/>
+                           <taskdep task="fv3frdmem_04"/>
+                           <taskdep task="fv3frdmem_05"/>
+                           <taskdep task="fv3frdmem_06"/>
+                           <taskdep task="fv3frdmem_07"/>
+                           <taskdep task="fv3frdmem_08"/>
+                           <taskdep task="fv3frdmem_09"/>
+                           <taskdep task="fv3frdmem_10"/>
+                           <taskdep task="fv3frdmem_11"/>
+                           <taskdep task="fv3frdmem_12"/>
+                           <taskdep task="fv3frdmem_13"/>
+                           <taskdep task="fv3frdmem_14"/>
+                           <taskdep task="fv3frdmem_15"/>
+                           <taskdep task="fv3frdmem_16"/>
+                           <taskdep task="fv3frdmem_17"/>
+                           <taskdep task="fv3frdmem_18"/>
+                           <taskdep task="fv3frdmem_19"/>
+                           <taskdep task="fv3frdmem_20"/>
+                           <taskdep task="fv3frdmem_21"/>
+                           <taskdep task="fv3frdmem_22"/>
+                           <taskdep task="fv3frdmem_23"/>
+                           <taskdep task="fv3frdmem_24"/>
+                           <taskdep task="fv3frdmem_25"/>
+                           <taskdep task="fv3frdmem_26"/>
+                           <taskdep task="fv3frdmem_27"/>
+                           <taskdep task="fv3frdmem_28"/>
+                           <taskdep task="fv3frdmem_29"/>
+                           <taskdep task="fv3frdmem_30"/>
+                           <taskdep task="fv3frdmem_31"/>
+                           <taskdep task="fv3frdmem_32"/>
+                           <taskdep task="fv3frdmem_33"/>
+                           <taskdep task="fv3frdmem_34"/>
+                           <taskdep task="fv3frdmem_35"/>
+                           <taskdep task="fv3frdmem_36"/>
+                        </and>
+                    </or>
+                </and>
+            </dependency>
+        </task>
+
+        <!-- Hourly prebufr workflow 2. gsimean_conv -->
+        <task name="gsimean_#OBSTYPE#" cycledefs="hourly" maxtries="1">
+            <command>&SCRIPTS;/GSI/gsi_diag.ksh</command>
+            <account>&ACCOUNT;</account>
+            <queue>batch</queue>
+            <cores>96</cores>
+            <walltime>00:30:00</walltime>
+            <jobname><cyclestr>gsimean_#OBSTYPE#_@H@M</cyclestr></jobname>
+            <stdout><cyclestr>&CYCDIR;/@Y@m@d@H@M/shdir/gsimean_#OBSTYPE#_@H@M.out</cyclestr></stdout>
+            <stderr><cyclestr>&CYCDIR;/@Y@m@d@H@M/shdir/gsimean_#OBSTYPE#_@H@M.err</cyclestr></stderr>
+
+            <envar>
+              <name>PROC</name>
+              <value>96</value>
+            </envar>
+
+            <envar>
+              <name>DATAHOME</name>
+              <value>&CYCDIR;</value>
+            </envar>
+            <envar>
+              <name>GSI_ROOT</name>
+              <value>&HOMEBASE_DIR;/exec/GSI</value>
+            </envar>
+            <envar>
+              <name>STATIC_DIR_GSI</name>
+              <value>&HOMEBASE_DIR;/static/GSI</value>
+            </envar>
+            <envar>
+              <name>ANALYSIS_TIME</name>
+              <value><cyclestr>@Y@m@d@H@M</cyclestr></value>
+            </envar>
+            <envar>
+              <name>WORK_ROOT</name>
+              <value><cyclestr>&CYCDIR;/@Y@m@d@H@M</cyclestr></value>
+            </envar>
+            <envar>
+              <name>ENSEMBLE_SIZE</name>
+              <value>36</value>
+            </envar>
+            <envar>
+              <name>RADAR_ONLY</name>
+              <value>#RADARDA#</value>
+            </envar>
+            <envar>
+              <name>CONV_ONLY</name>
+              <value>#CONVDA#</value>
+            </envar>
+
+            <dependency>
+                <taskdep task="fgmean_#OBSTYPE#"/>
+            </dependency>
+        </task>
+
+        <!-- Hourly prebufr workflow 3. gsi_mem_conv -->
+        <metatask name="GSI_MEM_#OBSTYPE#">
+
+            <var name="MEMBER">01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36</var>
+
+            <task name="gsimem_#OBSTYPE#_#MEMBER#" cycledefs="hourly" maxtries="3">
+                <command>&SCRIPTS;/GSI/gsi_diag_mem.ksh</command>
+                <account>&ACCOUNT;</account>
+                <queue>batch</queue>
+                <cores>96</cores>
+                <walltime>00:10:00</walltime>
+                <jobname><cyclestr>gsimem_#OBSTYPE#_#MEMBER#_@H@M</cyclestr></jobname>
+                <stdout><cyclestr>&CYCDIR;/@Y@m@d@H@M/shdir/gsimem_#OBSTYPE#_#MEMBER#_@H@M.out</cyclestr></stdout>
+                <stderr><cyclestr>&CYCDIR;/@Y@m@d@H@M/shdir/gsimem_#OBSTYPE#_#MEMBER#_@H@M.err</cyclestr></stderr>
+
+                <envar>
+                  <name>PROC</name>
+                  <value>96</value>
+                </envar>
+
+                <envar>
+                  <name>DATAHOME</name>
+                  <value>&CYCDIR;</value>
+                </envar>
+                <envar>
+                  <name>GSI_ROOT</name>
+                  <value>&HOMEBASE_DIR;/exec/GSI</value>
+                </envar>
+                <envar>
+                  <name>STATIC_DIR_GSI</name>
+                  <value>&HOMEBASE_DIR;/static/GSI</value>
+                </envar>
+                <envar>
+                  <name>ANALYSIS_TIME</name>
+                  <value><cyclestr>@Y@m@d@H@M</cyclestr></value>
+                </envar>
+                <envar>
+                  <name>WORK_ROOT</name>
+                  <value><cyclestr>&CYCDIR;/@Y@m@d@H@M</cyclestr></value>
+                </envar>
+                <envar>
+                  <name>ENSEMBLE_SIZE</name>
+                  <value>36</value>
+                </envar>
+                <envar>
+                  <name>ENS_MEM_START</name>
+                  <value>#MEMBER#</value>
+                </envar>
+                <envar>
+                  <name>ENS_MEMNUM_THIS</name>
+                  <value>1</value>
+                </envar>
+                <envar>
+                  <name>RADAR_ONLY</name>
+                  <value>#RADARDA#</value>
+                </envar>
+                <envar>
+                  <name>CONV_ONLY</name>
+                  <value>#CONVDA#</value>
+                </envar>
+
+                <dependency>
+                    <and>
+                        <taskdep task="gsimean_#OBSTYPE#"/>
+                        <or>
+                               <taskdep task="fv3frdini_#MEMBER#"/>
+                               <taskdep task="fv3frdmem_#MEMBER#"/>
+                        </or>
+                    </and>
+                </dependency>
+            </task>
+
+        </metatask>
+
+        <!-- Hourly prebufr workflow 4. enkf_conv -->
+        <task name="enkf_#OBSTYPE#" cycledefs="hourly" maxtries="1">
+            <command>&SCRIPTS;/GSI/run_enkf_fv3.ksh</command>
+            <account>&ACCOUNT;</account>
+            <queue>batch</queue>
+            <cores>60</cores>
+            <walltime>00:30:00</walltime>
+            <jobname><cyclestr>enkf_#OBSTYPE#_@H@M</cyclestr></jobname>
+            <stdout><cyclestr>&CYCDIR;/@Y@m@d@H@M/shdir/enkf_#OBSTYPE#_@H@M.out</cyclestr></stdout>
+            <stderr><cyclestr>&CYCDIR;/@Y@m@d@H@M/shdir/enkf_#OBSTYPE#_@H@M.err</cyclestr></stderr>
+
+            <envar>
+              <name>PROC</name>
+              <value>60</value>
+            </envar>
+
+            <envar>
+              <name>DATAHOME</name>
+              <value>&CYCDIR;</value>
+            </envar>
+            <envar>
+              <name>GSI_ROOT</name>
+              <value>&HOMEBASE_DIR;/exec/GSI</value>
+            </envar>
+            <envar>
+              <name>ENKF_STATIC</name>
+              <value>&HOMEBASE_DIR;/static/GSI</value>
+            </envar>
+            <envar>
+              <name>ANALYSIS_TIME</name>
+              <value><cyclestr>@Y@m@d@H@M</cyclestr></value>
+            </envar>
+            <envar>
+              <name>WORK_ROOT</name>
+              <value><cyclestr>&CYCDIR;/@Y@m@d@H@M</cyclestr></value>
+            </envar>
+            <envar>
+              <name>ENSEMBLE_SIZE</name>
+              <value>36</value>
+            </envar>
+            <envar>
+              <name>NLONS</name>
+              <value>&NLONS;</value>
+            </envar>
+            <envar>
+              <name>NLATS</name>
+              <value>&NLATS;</value>
+            </envar>
+            <envar>
+              <name>NLEVS</name>
+              <value>&NLEVS;</value>
+            </envar>
+            <envar>
+              <name>RADAR_ONLY</name>
+              <value>#RADARDA#</value>
+            </envar>
+            <envar>
+              <name>CONV_ONLY</name>
+              <value>#CONVDA#</value>
+            </envar>
+
+            <dependency>
+                <metataskdep metatask="GSI_MEM_#OBSTYPE#"/>
+            </dependency>
+        </task>
+
+    </metatask>
+
+    <!--  **********************************************************************  -->
+    <!-- Radar data workflow, 15min -->
+
+    <!-- 15min radar workflow 1. fgmean_conv -->
+    <task name="fgmean_RADAR" cycledefs="15min,inithour" maxtries="1">
+        <command>&SCRIPTS;/GSI/firstguess_ensmean.ksh</command>
+        <account>&ACCOUNT;</account>
+        <queue>batch</queue>
+        <cores>48</cores>
+        <walltime>00:30:00</walltime>
+        <jobname><cyclestr>fgmean_RADAR_@H@M</cyclestr></jobname>
+        <stdout><cyclestr>&CYCDIR;/@Y@m@d@H@M/shdir/fgmean_RADAR_@H@M.out</cyclestr></stdout>
+        <stderr><cyclestr>&CYCDIR;/@Y@m@d@H@M/shdir/fgmean_RADAR_@H@M.err</cyclestr></stderr>
+
+        <envar>
+          <name>PROC</name>
+          <value>48</value>
+        </envar>
+
+        <envar>
+          <name>DATAHOME</name>
+          <value>&CYCDIR;</value>
+        </envar>
+        <envar>
+          <name>GSI_ROOT</name>
+          <value>&HOMEBASE_DIR;/exec/GSI</value>
+        </envar>
+        <envar>
+          <name>STATIC_DIR_GSI</name>
+          <value>&HOMEBASE_DIR;/static/GSI</value>
+        </envar>
+        <envar>
+          <name>ANALYSIS_TIME</name>
+          <value><cyclestr>@Y@m@d@H@M</cyclestr></value>
+        </envar>
+        <envar>
+          <name>WORK_ROOT</name>
+          <value><cyclestr>&CYCDIR;/@Y@m@d@H@M</cyclestr></value>
+        </envar>
+        <envar>
+          <name>ENSEMBLE_SIZE</name>
+          <value>36</value>
+        </envar>
+        <envar>
+          <name>NVAR</name>
+          <value>14</value>
+        </envar>
+        <envar>
+          <name>IF_CONV</name>
+          <value>0</value>
+        </envar>
+
+        <dependency>
+            <and>
+                <taskdep task="radarobs"/>
+                <or>
+                    <and>
+                       <taskdep task="fv3frdini_01"/>
+                       <taskdep task="fv3frdini_02"/>
+                       <taskdep task="fv3frdini_03"/>
+                       <taskdep task="fv3frdini_04"/>
+                       <taskdep task="fv3frdini_05"/>
+                       <taskdep task="fv3frdini_06"/>
+                       <taskdep task="fv3frdini_07"/>
+                       <taskdep task="fv3frdini_08"/>
+                       <taskdep task="fv3frdini_09"/>
+                       <taskdep task="fv3frdini_10"/>
+                       <taskdep task="fv3frdini_11"/>
+                       <taskdep task="fv3frdini_12"/>
+                       <taskdep task="fv3frdini_13"/>
+                       <taskdep task="fv3frdini_14"/>
+                       <taskdep task="fv3frdini_15"/>
+                       <taskdep task="fv3frdini_16"/>
+                       <taskdep task="fv3frdini_17"/>
+                       <taskdep task="fv3frdini_18"/>
+                       <taskdep task="fv3frdini_19"/>
+                       <taskdep task="fv3frdini_20"/>
+                       <taskdep task="fv3frdini_21"/>
+                       <taskdep task="fv3frdini_22"/>
+                       <taskdep task="fv3frdini_23"/>
+                       <taskdep task="fv3frdini_24"/>
+                       <taskdep task="fv3frdini_25"/>
+                       <taskdep task="fv3frdini_26"/>
+                       <taskdep task="fv3frdini_27"/>
+                       <taskdep task="fv3frdini_28"/>
+                       <taskdep task="fv3frdini_29"/>
+                       <taskdep task="fv3frdini_30"/>
+                       <taskdep task="fv3frdini_31"/>
+                       <taskdep task="fv3frdini_32"/>
+                       <taskdep task="fv3frdini_33"/>
+                       <taskdep task="fv3frdini_34"/>
+                       <taskdep task="fv3frdini_35"/>
+                       <taskdep task="fv3frdini_36"/>
+                    </and>
+                    <and>
+                       <taskdep task="fv3frdmem_01"/>
+                       <taskdep task="fv3frdmem_02"/>
+                       <taskdep task="fv3frdmem_03"/>
+                       <taskdep task="fv3frdmem_04"/>
+                       <taskdep task="fv3frdmem_05"/>
+                       <taskdep task="fv3frdmem_06"/>
+                       <taskdep task="fv3frdmem_07"/>
+                       <taskdep task="fv3frdmem_08"/>
+                       <taskdep task="fv3frdmem_09"/>
+                       <taskdep task="fv3frdmem_10"/>
+                       <taskdep task="fv3frdmem_11"/>
+                       <taskdep task="fv3frdmem_12"/>
+                       <taskdep task="fv3frdmem_13"/>
+                       <taskdep task="fv3frdmem_14"/>
+                       <taskdep task="fv3frdmem_15"/>
+                       <taskdep task="fv3frdmem_16"/>
+                       <taskdep task="fv3frdmem_17"/>
+                       <taskdep task="fv3frdmem_18"/>
+                       <taskdep task="fv3frdmem_19"/>
+                       <taskdep task="fv3frdmem_20"/>
+                       <taskdep task="fv3frdmem_21"/>
+                       <taskdep task="fv3frdmem_22"/>
+                       <taskdep task="fv3frdmem_23"/>
+                       <taskdep task="fv3frdmem_24"/>
+                       <taskdep task="fv3frdmem_25"/>
+                       <taskdep task="fv3frdmem_26"/>
+                       <taskdep task="fv3frdmem_27"/>
+                       <taskdep task="fv3frdmem_28"/>
+                       <taskdep task="fv3frdmem_29"/>
+                       <taskdep task="fv3frdmem_30"/>
+                       <taskdep task="fv3frdmem_31"/>
+                       <taskdep task="fv3frdmem_32"/>
+                       <taskdep task="fv3frdmem_33"/>
+                       <taskdep task="fv3frdmem_34"/>
+                       <taskdep task="fv3frdmem_35"/>
+                       <taskdep task="fv3frdmem_36"/>
+                    </and>
+                </or>
+            </and>
+        </dependency>
+    </task>
+
+    <!-- 15min radar  workflow 2. gsimean_RADAR -->
+    <task name="gsimean_RADAR" cycledefs="15min,inithour" maxtries="1">
+        <command>&SCRIPTS;/GSI/gsi_diag.ksh</command>
+        <account>&ACCOUNT;</account>
+        <queue>batch</queue>
+        <cores>96</cores>
+        <walltime>00:30:00</walltime>
+        <jobname><cyclestr>gsimean_RADAR_@H@M</cyclestr></jobname>
+        <stdout><cyclestr>&CYCDIR;/@Y@m@d@H@M/shdir/gsimean_RADAR_@H@M.out</cyclestr></stdout>
+        <stderr><cyclestr>&CYCDIR;/@Y@m@d@H@M/shdir/gsimean_RADAR_@H@M.err</cyclestr></stderr>
+
+        <envar>
+          <name>PROC</name>
+          <value>96</value>
+        </envar>
+
+        <envar>
+          <name>DATAHOME</name>
+          <value>&CYCDIR;</value>
+        </envar>
+        <envar>
+          <name>GSI_ROOT</name>
+          <value>&HOMEBASE_DIR;/exec/GSI</value>
+        </envar>
+        <envar>
+          <name>STATIC_DIR_GSI</name>
+          <value>&HOMEBASE_DIR;/static/GSI</value>
+        </envar>
+        <envar>
+          <name>ANALYSIS_TIME</name>
+          <value><cyclestr>@Y@m@d@H@M</cyclestr></value>
+        </envar>
+        <envar>
+          <name>WORK_ROOT</name>
+          <value><cyclestr>&CYCDIR;/@Y@m@d@H@M</cyclestr></value>
+        </envar>
+        <envar>
+          <name>ENSEMBLE_SIZE</name>
+          <value>36</value>
+        </envar>
+        <envar>
+          <name>RADAR_ONLY</name>
+          <value>1</value>
+        </envar>
+        <envar>
+          <name>CONV_ONLY</name>
+          <value>0</value>
+        </envar>
+
+        <dependency>
+            <taskdep task="fgmean_RADAR"/>
+        </dependency>
+    </task>
+
+    <!-- 15min radar  workflow 3. gsi_mem_conv -->
+    <metatask name="GSI_MEM_RADAR">
+
+        <var name="MEMBER">01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36</var>
+
+        <task name="gsimem_RADAR_#MEMBER#" cycledefs="15min,inithour" maxtries="3">
+            <command>&SCRIPTS;/GSI/gsi_diag_mem.ksh</command>
+            <account>&ACCOUNT;</account>
+            <queue>batch</queue>
+            <cores>96</cores>
+            <walltime>00:10:00</walltime>
+            <jobname><cyclestr>gsimem_RADAR_#MEMBER#_@H@M</cyclestr></jobname>
+            <stdout><cyclestr>&CYCDIR;/@Y@m@d@H@M/shdir/gsimem_RADAR_#MEMBER#_@H@M.out</cyclestr></stdout>
+            <stderr><cyclestr>&CYCDIR;/@Y@m@d@H@M/shdir/gsimem_RADAR_#MEMBER#_@H@M.err</cyclestr></stderr>
+
+            <envar>
+              <name>PROC</name>
+              <value>96</value>
+            </envar>
+
+            <envar>
+              <name>DATAHOME</name>
+              <value>&CYCDIR;</value>
+            </envar>
+            <envar>
+              <name>GSI_ROOT</name>
+              <value>&HOMEBASE_DIR;/exec/GSI</value>
+            </envar>
+            <envar>
+              <name>STATIC_DIR_GSI</name>
+              <value>&HOMEBASE_DIR;/static/GSI</value>
+            </envar>
+            <envar>
+              <name>ANALYSIS_TIME</name>
+              <value><cyclestr>@Y@m@d@H@M</cyclestr></value>
+            </envar>
+            <envar>
+              <name>WORK_ROOT</name>
+              <value><cyclestr>&CYCDIR;/@Y@m@d@H@M</cyclestr></value>
+            </envar>
+            <envar>
+              <name>ENSEMBLE_SIZE</name>
+              <value>36</value>
+            </envar>
+            <envar>
+              <name>ENS_MEM_START</name>
+              <value>#MEMBER#</value>
+            </envar>
+            <envar>
+              <name>ENS_MEMNUM_THIS</name>
+              <value>1</value>
+            </envar>
+            <envar>
+              <name>RADAR_ONLY</name>
+              <value>1</value>
+            </envar>
+            <envar>
+              <name>CONV_ONLY</name>
+              <value>0</value>
+            </envar>
+
+            <dependency>
+                <taskdep task="gsimean_RADAR"/>
+            </dependency>
+        </task>
+
+    </metatask>
+
+    <!-- 15min radar workflow 4. enkf_conv -->
+    <task name="enkf_RADAR" cycledefs="15min,inithour" maxtries="1">
+        <command>&SCRIPTS;/GSI/run_enkf_fv3.ksh</command>
+        <account>&ACCOUNT;</account>
+        <queue>batch</queue>
+        <cores>60</cores>
+        <walltime>00:30:00</walltime>
+        <jobname><cyclestr>enkf_RADAR_@H@M</cyclestr></jobname>
+        <stdout><cyclestr>&CYCDIR;/@Y@m@d@H@M/shdir/enkf_RADAR_@H@M.out</cyclestr></stdout>
+        <stderr><cyclestr>&CYCDIR;/@Y@m@d@H@M/shdir/enkf_RADAR_@H@M.err</cyclestr></stderr>
+
+        <envar>
+          <name>PROC</name>
+          <value>60</value>
+        </envar>
+
+        <envar>
+          <name>DATAHOME</name>
+          <value>&CYCDIR;</value>
+        </envar>
+        <envar>
+          <name>GSI_ROOT</name>
+          <value>&HOMEBASE_DIR;/exec/GSI</value>
+        </envar>
+        <envar>
+          <name>ENKF_STATIC</name>
+          <value>&HOMEBASE_DIR;/static/GSI</value>
+        </envar>
+        <envar>
+          <name>ANALYSIS_TIME</name>
+          <value><cyclestr>@Y@m@d@H@M</cyclestr></value>
+        </envar>
+        <envar>
+          <name>WORK_ROOT</name>
+          <value><cyclestr>&CYCDIR;/@Y@m@d@H@M</cyclestr></value>
+        </envar>
+        <envar>
+          <name>ENSEMBLE_SIZE</name>
+          <value>36</value>
+        </envar>
+        <envar>
+          <name>NLONS</name>
+          <value>&NLONS;</value>
+        </envar>
+        <envar>
+          <name>NLATS</name>
+          <value>&NLATS;</value>
+        </envar>
+        <envar>
+          <name>NLEVS</name>
+          <value>&NLEVS;</value>
+        </envar>
+        <envar>
+          <name>RADAR_ONLY</name>
+          <value>1</value>
+        </envar>
+        <envar>
+          <name>CONV_ONLY</name>
+          <value>0</value>
+        </envar>
+
+        <dependency>
+            <metataskdep metatask="GSI_MEM_RADAR"/>
+        </dependency>
+    </task>
+
+    <!--  **********************************************************************  -->
+    <!-- Recenter -->
+    <task name="recent" cycledefs="15min,inithour,hourly" maxtries="3">
+        <command>&SCRIPTS;/GSI/analyis_ensmean.ksh</command>
+        <account>&ACCOUNT;</account>
+        <queue>batch</queue>
+        <cores>48</cores>
+        <walltime>00:30:00</walltime>
+        <jobname><cyclestr>recent_@H@M</cyclestr></jobname>
+        <stdout><cyclestr>&CYCDIR;/@Y@m@d@H@M/shdir/recent_@H@M.out</cyclestr></stdout>
+        <stderr><cyclestr>&CYCDIR;/@Y@m@d@H@M/shdir/recent_@H@M.err</cyclestr></stderr>
+
+        <envar>
+          <name>PROC</name>
+          <value>48</value>
+        </envar>
+
+        <envar>
+          <name>DATAHOME</name>
+          <value>&CYCDIR;</value>
+        </envar>
+        <envar>
+          <name>GSI_ROOT</name>
+          <value>&HOMEBASE_DIR;/exec/GSI</value>
+        </envar>
+        <envar>
+          <name>ANALYSIS_TIME</name>
+          <value><cyclestr>@Y@m@d@H@M</cyclestr></value>
+        </envar>
+        <envar>
+          <name>WORK_ROOT</name>
+          <value><cyclestr>&CYCDIR;/@Y@m@d@H@M</cyclestr></value>
+        </envar>
+        <envar>
+          <name>ENSEMBLE_SIZE</name>
+          <value>36</value>
+        </envar>
+        <envar>
+          <name>NVAR</name>
+          <value>14</value>
+        </envar>
+
+        <dependency>
+            <datadep><cyclestr>&CYCDIR;/@Y@m@d@H@M/EnKF_DONE_RADAR</cyclestr></datadep>
+        </dependency>
+    </task>
+
+    <!--  **********************************************************************  -->
+    <!-- UPDATELBC -->
+    <metatask name="UPDATELBC">
+
+        <var name="MEMBER">01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36</var>
+
+        <task name="moveda_#MEMBER#" cycledefs="15min,inithour,hourly" maxtries="1">
+            <command>&SCRIPTS;/GSI/MOVEDA.ksh</command>
+            <account>&ACCOUNT;</account>
+            <queue>batch</queue>
+            <cores>1</cores>
+            <walltime>00:30:00</walltime>
+            <jobname><cyclestr>moveda_#MEMBER#_@H@M</cyclestr></jobname>
+            <stdout><cyclestr>&CYCDIR;/@Y@m@d@H@M/shdir/moveda_#MEMBER#_@H@M.out</cyclestr></stdout>
+            <stderr><cyclestr>&CYCDIR;/@Y@m@d@H@M/shdir/moveda_#MEMBER#_@H@M.err</cyclestr></stderr>
+
+            <envar>
+              <name>PROC</name>
+              <value>1</value>
+            </envar>
+
+            <envar>
+              <name>HOME_ROOT</name>
+              <value>&CYCDIR;</value>
+            </envar>
+            <envar>
+              <name>GSI_ROOT</name>
+              <value>&HOMEBASE_DIR;/exec/GSI</value>
+            </envar>
+            <envar>
+              <name>START_TIME</name>
+              <value><cyclestr>@Y@m@d@H@M</cyclestr></value>
+            </envar>
+            <envar>
+              <name>WORK_ROOT</name>
+              <value><cyclestr>&CYCDIR;/@Y@m@d@H@M/movedaprd/movedaprd_#MEMBER#</cyclestr></value>
+            </envar>
+            <envar>
+              <name>MEM_INDEX</name>
+              <value>#MEMBER#</value>
+            </envar>
+
+            <dependency>
+                <taskdep task="recent"/>
+                <!--
+                <datadep><cyclestr>&CYCDIR;/@Y@m@d@H@M/EnKF_DONE_RADAR</cyclestr></datadep>
+                -->
+            </dependency>
+        </task>
+    </metatask>
+
+</workflow>

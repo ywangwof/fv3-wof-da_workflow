@@ -1,5 +1,11 @@
 #! /bin/ksh
 
+source /etc/profile.d/modules.sh
+source /lfs4/NAGAPE/hpc-wof1/ywang/EPIC2/oumap/ufs-srweather-app/env/build_jet_intel.env
+module use -a /lfs4/NAGAPE/hpc-wof1/ywang/EPIC2/oumap/ufs-srweather-app/env
+module load build_jet.env
+module load pnetcdf/1.11.2
+
 # Set up paths to shell commands
 LS=/bin/ls
 LN=/bin/ln
@@ -17,11 +23,11 @@ DATE=/bin/date
 MPIRUN=srun
 
 # Set up some constants
-exec_fp=${FV3LAM_ROOT}/ufs_weather_model
+exec_fp=${FV3LAM_ROOT}/ufs_weather_model.${CCPP_SUITE}
 exec_create_restart=${FV3LAM_ROOT}/create_expanded_restart_files_for_DA.x
 exec_prep_DA=${FV3LAM_ROOT}/prep_for_regional_DA.x
-NAMELIST_MC=${FV3LAM_STATIC}/FV3_HRRR/model_configure_fcst
-NAMELIST_IN=${FV3LAM_STATIC}/FV3_HRRR/input.nml_fcst
+NAMELIST_MC=${FV3LAM_STATIC}/FV3_${CCPP_SUITE}/model_configure_fcst
+NAMELIST_IN=${FV3LAM_STATIC}/FV3_${CCPP_SUITE}/input.nml_fcst
 FIXam=${FV3LAM_STATIC}/fix_am
 
 if [ ${INIT_TIME} -eq ${START_TIME} ]; then
@@ -92,7 +98,7 @@ init_hour=`${DATE} +%H -d "${INIT_TIME}"`
 init_minute=`${DATE} +%M -d "${INIT_TIME}"`
 init_second=`${DATE} +%S -d "${INIT_TIME}"`
 
-FCST_LENGTH_HR=$(bc -l <<< "${FCST_LENGTH}/3600" )
+FCST_LENGTH_HR=$(bc -l <<< "${FCST_LENGTH}/3600" )   # to keep float number
 # Print run parameters
 ${ECHO}
 ${ECHO} "fv3_arw_run.ksh started at `${DATE}`"
@@ -126,13 +132,13 @@ while [[ $ensmem -lt $end_member ]];do
  ${MKDIR} -p ${workdir}/RESTART
  cd ${workdir}/INPUT
  #${CP} -f ${INIHOME}/${INIT_YYYYMMDDHHMM}_DA/chgresprd/gfs_bndy.tile7*.nc .
- ${CP} -s ${FV3LAM_STATIC}/Fix_sar/C3337_mosaic.halo3.nc grid_spec.nc
- ${CP} -s ${FV3LAM_STATIC}/Fix_sar/C3337_grid.tile7.halo3.nc C3337_grid.tile7.halo3.nc
- ${CP} -s ${FV3LAM_STATIC}/Fix_sar/C3337_grid.tile7.halo4.nc grid.tile7.halo4.nc
- ${CP} -s ${FV3LAM_STATIC}/Fix_sar/C3337_oro_data.tile7.halo0.nc oro_data.nc
- ${CP} -s ${FV3LAM_STATIC}/Fix_sar/C3337_oro_data.tile7.halo4.nc oro_data.tile7.halo4.nc
- ${LN} -sf ${FV3LAM_STATIC}/Fix_sar/C3337_oro_data_ss.tile7.halo0.nc oro_data_ss.nc
- ${LN} -sf ${FV3LAM_STATIC}/Fix_sar/C3337_oro_data_ls.tile7.halo0.nc oro_data_ls.nc
+ ${CP} -s  ${FV3LAM_STATIC}/Fix_sar.${eventdate}/C3337_mosaic.halo3.nc grid_spec.nc
+ ${CP} -s  ${FV3LAM_STATIC}/Fix_sar.${eventdate}/C3337_grid.tile7.halo3.nc C3337_grid.tile7.halo3.nc
+ ${CP} -s  ${FV3LAM_STATIC}/Fix_sar.${eventdate}/C3337_grid.tile7.halo4.nc grid.tile7.halo4.nc
+ ${CP} -s  ${FV3LAM_STATIC}/Fix_sar.${eventdate}/C3337_oro_data.tile7.halo0.nc oro_data.nc
+ ${CP} -s  ${FV3LAM_STATIC}/Fix_sar.${eventdate}/C3337_oro_data.tile7.halo4.nc oro_data.tile7.halo4.nc
+ ${LN} -sf ${FV3LAM_STATIC}/Fix_sar.${eventdate}/C3337_oro_data_ss.tile7.halo0.nc oro_data_ss.nc
+ ${LN} -sf ${FV3LAM_STATIC}/Fix_sar.${eventdate}/C3337_oro_data_ls.tile7.halo0.nc oro_data_ls.nc
 
  if [ ${COLD_START} -eq 1 ]; then
    ${LN} -s ${INIHOME}/${INIT_YYYYMMDDHHMM}_$ensmem/chgresprd/gfs_data.tile7.halo0.nc .
@@ -146,9 +152,8 @@ while [[ $ensmem -lt $end_member ]];do
    ${CP} -f ${INIHOME}/${INIT_YYYYMMDDHHMM}_${ensmem}/chgresprd/gfs_bndy.tile7.000.nc .
    ${CP} -f ${INIHOME}/${INIT_YYYYMMDDHHMM}_${ensmem}/chgresprd/gfs_bndy.tile7.001.nc .
  else
-   cd ${workdir}/
+   #cd ${workdir}/INPUT
    #${CP} -f ${INIHOME}/${INIT_YYYYMMDDHHMM}_$ensmem/chgresprd/gfs_bndy.tile7.*.nc ./INPUT/
-   cd INPUT
    ${LN} -sf ${cycledir}/ANA/coupler.res coupler.res
    ${LN} -sf ${cycledir}/ANA/fv_core.res.nc fv_core.res.nc
    ${LN} -sf ${cycledir}/ANA/fv_core.res.tile1.nc fv_core.res.tile1.nc
@@ -158,18 +163,18 @@ while [[ $ensmem -lt $end_member ]];do
    ${LN} -sf ${cycledir}/ANA/sfc_data.nc sfc_data.nc
    ${LN} -sf ${cycledir}/ANA/fv_core.res.tile1_new.nc .
    ${LN} -sf ${cycledir}/ANA/fv_tracer.res.tile1_new.nc .
-   ${CP} -f ${cycledir}/ANA/gfs_bndy.tile7.*nc .
+   ${CP} -f  ${cycledir}/ANA/gfs_bndy.tile7.*nc .
 
-   cd ${workdir}
-   mv -f INPUT/gfs_bndy.tile7.001.nc INPUT/gfs_bndy.tile7.000.nc
-   mv -f INPUT/gfs_bndy.tile7.001_gsi.nc INPUT/gfs_bndy.tile7.000_gsi.nc
+   echo "Rename ${cycledir}/ANA/gfs_bndy.tile7.001.nc to INPUT/gfs_bndy.tile7.000.nc ..."
+   mv -f gfs_bndy.tile7.001.nc     gfs_bndy.tile7.000.nc
+   mv -f gfs_bndy.tile7.001_gsi.nc gfs_bndy.tile7.000_gsi.nc
 
    #if [ ${BNDY_BEG} -eq 3 ]; then
    #   tot_fhr=39
    #else
    #   tot_fhr=36
    #fi
-   tot_fhr=6
+   tot_fhr=$(( FCST_LENGTH/3600 ))
 
    ifhr=0
    for (( ifhr=1;ifhr<=tot_fhr;ifhr++)); do
@@ -178,13 +183,12 @@ while [[ $ensmem -lt $end_member ]];do
      #bndy2=$(printf "%03d" $(( 10#${ifhr} + 1 )) )
      bndy1=$(printf "%02d:00" $(( BNDY_BEG+ifhr)) )
      bndy2=$(printf "%03d" $ifhr)
-     ${CP} -f ${INIHOME}/${INIT_YYYYMMDDHHMM}_$ensmem/chgresprd/gfs_bndy.tile7.${bndy1}.nc ./INPUT/gfs_bndy.tile7.${bndy2}.nc
+     echo "Copy ${INIHOME}/${INIT_YYYYMMDDHHMM}_$ensmem/chgresprd/gfs_bndy.tile7.${bndy1}.nc to gfs_bndy.tile7.${bndy2}.nc ..."
+     ${CP} -f ${INIHOME}/${INIT_YYYYMMDDHHMM}_$ensmem/chgresprd/gfs_bndy.tile7.${bndy1}.nc ./gfs_bndy.tile7.${bndy2}.nc
    done
 
-
-   ${LN} -sf ${INIHOME}/${INIT_YYYYMMDDHHMM}_$ensmem/chgresprd/gfs_data.tile7.halo0.nc INPUT/gfs_data.nc
-   ${LN} -sf ${INIHOME}/${INIT_YYYYMMDDHHMM}_$ensmem/chgresprd/gfs_ctrl.nc INPUT/
-
+   ${LN} -sf ${INIHOME}/${INIT_YYYYMMDDHHMM}_$ensmem/chgresprd/gfs_data.tile7.halo0.nc gfs_data.nc
+   ${LN} -sf ${INIHOME}/${INIT_YYYYMMDDHHMM}_$ensmem/chgresprd/gfs_ctrl.nc             .
  fi
 
  ${ECHO} "start run ${workdir}"
@@ -209,18 +213,22 @@ while [[ $ensmem -lt $end_member ]];do
  ${LN} -sf ${FIXam}/CCN_ACTIVATE.BIN .
 
  # --- CCPP suite
- ${LN} -sf ${FV3LAM_STATIC}/suite_FV3_HRRR.xml .
+ if [[ ${CCPP_SUITE} =~ "HRRR" ]]; then
+     ${LN} -sf ${FV3LAM_STATIC}/FV3_${CCPP_SUITE}/suite_FV3_HRRR.xml .
+ else
+     ${LN} -sf ${FV3LAM_STATIC}/FV3_${CCPP_SUITE}/suite_FV3_RRFS_v1nssl_lsmnoah.xml .
+ fi
 
  # --- Others
- ${CP} -f ${FV3LAM_STATIC}/data_table .
- ${CP} -f ${FV3LAM_STATIC}/diag_table .
- ${CP} -f ${FV3LAM_STATIC}/field_table .
+ ${CP} -f ${FV3LAM_STATIC}/FV3_${CCPP_SUITE}/data_table .
+ ${CP} -f ${FV3LAM_STATIC}/FV3_${CCPP_SUITE}/diag_table .
+ ${CP} -f ${FV3LAM_STATIC}/FV3_${CCPP_SUITE}/field_table .
  ${CP} -f ${FV3LAM_STATIC}/freezeH2O.dat .
  ${CP} -f ${FV3LAM_STATIC}/qr_acr_qg.dat .
  ${CP} -f ${FV3LAM_STATIC}/qr_acr_qs.dat .
  ${CP} -f ${FV3LAM_STATIC}/qr_acr_qgV2.dat .
  ${CP} -f ${FV3LAM_STATIC}/qr_acr_qsV2.dat .
- ${CP} -f ${FV3LAM_STATIC}/nems.configure .
+ ${CP} -f ${FV3LAM_STATIC}/FV3_${CCPP_SUITE}/nems.configure .
 
  if [ ${COLD_START} -eq 1 ]; then
    make_nh='.true.'
@@ -242,7 +250,12 @@ while [[ $ensmem -lt $end_member ]];do
    warm_start='.true.'
    writebcs='.false.'
    bcsgsi='.true.'
-   lsoil=9
+   if [[ ${CCPP_SUITE} =~ "HRRR" ]]; then
+       lsoil=9
+   else
+       lsoil=4
+   fi
+
    nstf2=0
  fi
 
@@ -267,6 +280,10 @@ while [[ $ensmem -lt $end_member ]];do
  sed 's/_WARM_START_/'${warm_start}'/g' | \
  sed 's/_WRITE_BCS_/'${writebcs}'/g'    | \
  sed 's/_BCS_GSI_/'${bcsgsi}'/g'  > ./input.nml
+
+ source ${FV3LAM_STATIC}/Fix_sar.${eventdate}/model_grid.${eventdate}
+ sed -i "/target_lat/s/=.*/= $cen_lat/;/target_lon/s/=.*/= $cen_lon/" ./input.nml
+ sed -i "/cen_lat/s/:.*/: $cen_lat/;/cen_lon/s/:.*/: $cen_lon/;/^lat1/s/:.*/: $lat1/;/^lon1/s/:.*/: $lon1/" ./model_configure
 
  itry=1
  while [ ${itry} -le 3 ] ; do

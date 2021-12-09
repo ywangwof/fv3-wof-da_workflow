@@ -15,8 +15,8 @@
   module load build_jet.env
   module load pnetcdf/1.11.2
 
-  todaydate=20210527
-  nextdate=20210528
+  #todaydate=20200515
+  #nextdate=20200516
 
   # --- batch system
   # ---
@@ -37,6 +37,8 @@
   STATIC_DIR_CHGRES=${STATIC_DIR}/CHGRES
   STATIC_DIR_FV3LAM=${STATIC_DIR}/FV3LAM
 
+  #CCPP_SUITE="HRRR"
+
   EXEC=${HOMEBASE_DIR}/exec
   CHGRES_ROOT=${EXEC}/CHGRES
   FV3LAM_ROOT=${EXEC}/FV3LAM
@@ -45,7 +47,7 @@
 
   # --- Case data
   # ---
-  DATABASE_DIR=/lfs4/NAGAPE/hpc-wof1/ywang/EPIC2/oumap/rundir/${todaydate}
+  #DATABASE_DIR=/lfs4/NAGAPE/hpc-wof1/ywang/EPIC2/oumap/rundir/${CCPP_SUITE}/${todaydate}
   OBS_DIR=/lfs4/NAGAPE/hpc-wof1/ywang/EPIC2/oumap/data/${todaydate}
   GFS_DIR=${OBS_DIR}/ensemble_BG
   HRRRE_DIR=${OBS_DIR}
@@ -53,8 +55,8 @@
   RADAR_DIR=${OBS_DIR}/radar
 
   # ---
-  LOG_DIR=${DATABASE_DIR}/log
-  DATAROOT_INI=${DATABASE_DIR}/ini
+  #LOG_DIR=${DATABASE_DIR}/log
+  #DATAROOT_INI=${DATABASE_DIR}/ini
 
   # --- Date setting
   # ---
@@ -71,14 +73,13 @@
   radar_cycle_intv=15
   # This is temporally used for conventional DA and can be set for radar DA when restarting the DA procedure.
   DA_INTV=15
-  FCST_LENGTH=18*3600
+  FCST_LENGTH=$((3*3600))
 
   # --- Ensemble size
   # ---
   ENSSIZE=36
   ENSSIZE_REAL=36
   ENSSIZE_BNDY=9
-  showcmd="sbatch" # "sbatch" or "echo sbatch"
 
   # --- Domain settings
   # ---

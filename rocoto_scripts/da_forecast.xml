@@ -1,0 +1,126 @@
+<?xml version="1.0"?>
+<!DOCTYPE workflow
+[
+
+    <!ENTITY EXPenvir "NSSL">
+    <!ENTITY STARTYEAR "2021">
+    <!ENTITY STARTMONTH "05">
+    <!ENTITY STARTDAY "27">
+    <!ENTITY STARTHOUR "15">
+
+    <!ENTITY ENDYEAR "2021">
+    <!ENTITY ENDMONTH "05">
+    <!ENTITY ENDDAY "28">
+    <!ENTITY ENDHOUR "03">
+
+    <!ENTITY EVENTDATE "20210527">
+
+    <!ENTITY USER "Yunheng.Wang">
+    <!ENTITY machine "jet">
+    <!ENTITY ACCOUNT "hpc-wof1">
+
+    <!ENTITY HOMEBASE_DIR "/lfs4/NAGAPE/hpc-wof1/ywang/EPIC2/oumap/da-forecast-workflow">
+    <!ENTITY RUNDIR "/lfs4/NAGAPE/hpc-wof1/ywang/EPIC2/oumap/rundir/&EXPenvir;">
+    <!ENTITY SCRIPTS "&HOMEBASE_DIR;/scripts">
+    <!ENTITY LOGDIR "&RUNDIR;/&EVENTDATE;/log">
+    <!ENTITY CYCDIR "&RUNDIR;/&EVENTDATE;/cycle">
+    <!ENTITY FCSTDIR "&RUNDIR;/&EVENTDATE;">
+    <!ENTITY DATAROOT_INI "&RUNDIR;/&EVENTDATE;/ini">
+
+    <!ENTITY PREPBUFR_DIR "/lfs4/NAGAPE/hpc-wof1/ywang/EPIC2/oumap/data/&EVENTDATE;/prepbufr">
+    <!ENTITY RADAROBS_DIR "/lfs4/NAGAPE/hpc-wof1/ywang/EPIC2/oumap/data/&EVENTDATE;/radar">
+
+    <!ENTITY secondsfcst "10800">
+    <!ENTITY NLONS "356">
+    <!ENTITY NLATS "356">
+    <!ENTITY NLEVS "62">
+]>
+
+<!--  ************************************************************* -->
+<!--  ******************* STARTING THE WORKFLOW ******************* -->
+
+<workflow realtime="F" scheduler="slurm" cyclelifespan="10:01:00:00" cyclethrottle="1" taskthrottle="60">
+
+    <cycledef group="regional">&STARTYEAR;&STARTMONTH;&STARTDAY;1700 &ENDYEAR;&ENDMONTH;&ENDDAY;&ENDHOUR;00 01:00:00</cycledef>
+
+    <log>
+        <cyclestr>&LOGDIR;/da_fcst_@Y@m@d@H@M.log</cyclestr>
+    </log>
+
+
+    <!--  **********************************************************************  -->
+    <!-- Run foreward FV3 -->
+
+    <metatask name="FV3FRD">
+
+        <var name="MEMBER">1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18</var>
+
+        <task name="fv3fcst_#MEMBER#" cycledefs="regional" maxtries="3">
+
+          <command>&SCRIPTS;/FV3LAM/fv3lam_fcst.ksh</command>
+          <account>&ACCOUNT;</account>
+          <queue>batch</queue>
+          <cores>240</cores>
+          <walltime>01:30:00</walltime>
+          <jobname><cyclestr>fv3fcst_@H@M-#MEMBER#</cyclestr></jobname>
+          <stdout><cyclestr>&LOGDIR;/fv3fcst_@H@M-#MEMBER#.out</cyclestr></stdout>
+          <stderr><cyclestr>&LOGDIR;/fv3fcst_@H@M-#MEMBER#.err</cyclestr></stderr>
+
+          <envar>
+            <name>PROC</name>
+            <value>240</value>
+          </envar>
+
+          <envar>
+            <name>eventdate</name>
+            <value>&EVENTDATE;</value>
+          </envar>
+          <envar>
+            <name>CCPP_SUITE</name>
+            <value>&EXPenvir;</value>
+          </envar>
+          <envar>
+            <name>INIHOME</name>
+            <value>&DATAROOT_INI;</value>
+          </envar>
+          <envar>
+            <name>FV3LAM_ROOT</name>
+            <value>&HOMEBASE_DIR;/exec/FV3LAM</value>
+          </envar>
+          <envar>
+            <name>FV3LAM_STATIC</name>
+            <value>&HOMEBASE_DIR;/static/FV3LAM</value>
+          </envar>
+          <envar>
+            <name>DATAHOME</name>
+            <value>&FCSTDIR;</value>
+          </envar>
+          <envar>
+            <name>ENS_MEM_START</name>
+            <value>#MEMBER#</value>
+          </envar>
+          <envar>
+            <name>ENS_MEMNUM_THIS</name>
+            <value>1</value>
+          </envar>
+          <envar>
+            <name>INIT_TIME</name>
+            <value>&EVENTDATE;&STARTHOUR;00</value>
+          </envar>
+          <envar>
+            <name>START_TIME</name>
+            <value><cyclestr>@Y@m@d@H@M</cyclestr></value>
+          </envar>
+          <envar>
+            <name>FCST_LENGTH</name>
+            <value>&secondsfcst;</value>
+          </envar>
+
+          <dependency>
+              <datadep age="02:00" minsize="90M"><cyclestr>&CYCDIR;/@Y@m@d@H@M/movedaprd/movedaprd_#MEMBER#/gfs_bndy.tile7.001_gsi.nc</cyclestr></datadep>
+          </dependency>
+        </task>
+
+    </metatask>
+
+</workflow>

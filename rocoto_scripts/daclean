@@ -1,0 +1,4 @@
+#!/bin/bash -l
+#set -x
+
+rm -rf da_cycles_20200513.db da_cycles_20200513_lock.db *.out

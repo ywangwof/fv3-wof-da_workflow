@@ -5,6 +5,11 @@
 #
 ##########################################################################
 
+source /lfs4/NAGAPE/hpc-wof1/ywang/EPIC2/oumap/ufs-srweather-app/env/build_jet_intel.env
+module use -a /lfs4/NAGAPE/hpc-wof1/ywang/EPIC2/oumap/ufs-srweather-app/env
+module load build_jet.env
+module load pnetcdf/1.11.2
+
 np=${PROC}
 
 # Set up paths to shell commands
@@ -40,12 +45,6 @@ if [ ! "${WORK_ROOT}" ]; then
 fi
 
 echo "WORK_ROOT = ${WORK_ROOT}"
-
-if [ ! "${NUM_DOMAINS}" ]; then
-  echo "ERROR: \$NUM_DOMAINS is not defined!"
-  exit 1
-fi
-echo "NUM_DOMAINS = ${NUM_DOMAINS}"
 
 if [ ! "${GSI_ROOT}" ]; then
   echo "ERROR: \$GSI_ROOT is not defined!"

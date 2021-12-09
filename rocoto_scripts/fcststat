@@ -1,0 +1,6 @@
+#!/bin/bash -l
+#set -x
+
+#module load  rocoto/1.3.3
+
+rocotostat -w da_forecast.xml -d da_fcst_20210527.db $*

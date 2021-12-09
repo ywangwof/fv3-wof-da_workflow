@@ -2,13 +2,41 @@
 
 set -u
 
-sourcedir="$1"
-targetdir="$2"
+eventdt=${1-20200515}
+sourceroot="/lfs4/NAGAPE/hpc-wof1/ywang/EPIC2"    # up to GRID_YYYYMMDDHH
+targetdir="/lfs4/NAGAPE/hpc-wof1/ywang/EPIC2/oumap/da-forecast-workflow"    # up to da-forecast-workflow
 
+sourcedir="${sourceroot}/expt_dirs/GRID_${eventdt}15"
+tmplfile="${sourceroot}/templates/configGrid_${eventdt}15_jet.sh"
+
+source $tmplfile
+output_grid=${WRTCMP_output_grid}
+cen_lat=${ESGgrid_LAT_CTR}
+cen_lon=${ESGgrid_LON_CTR}
+stdlat1=${WRTCMP_stdlat1}
+stdlat2=${WRTCMP_stdlat2}
+nx=${WRTCMP_nx}
+ny=${WRTCMP_ny}
+dx=${WRTCMP_dx}
+dy=${WRTCMP_dy}
+lat1=${WRTCMP_lat_lwr_left}
+lon1=${WRTCMP_lon_lwr_left}
+
+#echo "output_grid=${output_grid}, cen_lat=${cen_lat}, cen_lon=${cen_lon}, stdlat1=${stdlat1}, stdlat2=${stdlat2}"
+#echo "nx=${nx}, ny=${ny}, dx=${dx}, dy=${dy}, lat1=${lat1}, lon1=${lon1}"
+#exit 0
 #grid_name="$1"
 res="3337"
 
-cd "${targetdir}/static/CHGRES/Fix_sar"
+fixdir="${targetdir}/static/CHGRES/Fix_sar.$eventdt"
+if [[ ! -r $fixdir ]]; then
+    mkdir -p $fixdir
+else
+    #echo "$fixdir exists. Exiting ..."
+    #exit 0
+    rm -rf $fixdir/*
+fi
+cd $fixdir
 pwd
 
 cres="C$res"
@@ -143,5 +171,38 @@ Cannot create symlink because target file (target) does not exist:
     exit 1
   fi
 done
+
+#
+# Modify run-time files
+#
+
+cat > model_grid.$eventdt <<EOF
+output_grid=${WRTCMP_output_grid}
+cen_lat=${ESGgrid_LAT_CTR}
+cen_lon=${ESGgrid_LON_CTR}
+stdlat1=${WRTCMP_stdlat1}
+stdlat2=${WRTCMP_stdlat2}
+nx=${WRTCMP_nx}
+ny=${WRTCMP_ny}
+dx=${WRTCMP_dx}
+dy=${WRTCMP_dy}
+lat1=${WRTCMP_lat_lwr_left}
+lon1=${WRTCMP_lon_lwr_left}
+EOF
+
+#echo "Modify target_lat/target_lon in input.nml & input.nml_fcst"
+#target_dir="$2/static/FV3LAM/FV3_HRRR"
+#for fn in input.nml input.nml_fcst; do
+#    sed -i "/target_lat/s/=.*/= $cen_lat/;/target_lon/s/=.*/= $cen_lon/" $target_dir/$fn
+#done
+#
+#echo "Modify WRITE_COMPONENT in model_configure_fcst"
+#target_file="$target_dir/model_configure_fcst"
+#sed -i "/cen_lat/s/:.*/: $cen_lat/;/cen_lon/s/:.*/: $cen_lon/;/^lat1/s/:.*/: $lat1/;/^lon1/s/:.*/: $lon1/" $target_file
+
+# modify static file in statics/FV3LAM
+fixdir="${targetdir}/static/FV3LAM"
+cd $fixdir
+ln -s ../CHGRES/Fix_sar.$eventdt .
 
 exit 0

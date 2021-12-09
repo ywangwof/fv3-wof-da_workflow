@@ -1,5 +1,11 @@
 #! /bin/ksh
 
+source /etc/profile.d/modules.sh
+source /lfs4/NAGAPE/hpc-wof1/ywang/EPIC2/oumap/ufs-srweather-app/env/build_jet_intel.env
+module use -a /lfs4/NAGAPE/hpc-wof1/ywang/EPIC2/oumap/ufs-srweather-app/env
+module load build_jet.env
+module load pnetcdf/1.11.2
+
 # Set up paths to shell commands
 LS=/bin/ls
 LN=/bin/ln
@@ -7,6 +13,7 @@ RM=/bin/rm
 MKDIR=/bin/mkdir
 CP=/bin/cp
 MV=/bin/mv
+CP_OR_MV="${CP}"
 ECHO=/bin/echo
 CAT=/bin/cat
 GREP=/bin/grep
@@ -17,11 +24,11 @@ DATE=/bin/date
 MPIRUN=srun
 
 # Set up some constants
-exec_fp=${FV3LAM_ROOT}/ufs_weather_model
+exec_fp=${FV3LAM_ROOT}/ufs_weather_model.${CCPP_SUITE}
 exec_create_restart=${FV3LAM_ROOT}/create_expanded_restart_files_for_DA.x
 exec_prep_DA=${FV3LAM_ROOT}/prep_for_regional_DA.x
-NAMELIST_MC=${FV3LAM_STATIC}/FV3_HRRR/model_configure
-NAMELIST_IN=${FV3LAM_STATIC}/FV3_HRRR/input.nml
+NAMELIST_MC=${FV3LAM_STATIC}/FV3_${CCPP_SUITE}/model_configure
+NAMELIST_IN=${FV3LAM_STATIC}/FV3_${CCPP_SUITE}/input.nml
 FIXam=${FV3LAM_STATIC}/fix_am
 
 if [ ${INIT_TIME} -eq ${START_TIME} ]; then
@@ -112,7 +119,7 @@ ${ECHO} "COLD/WARM RUN   = "${COLD_START}
 ${ECHO}
 
 # loop over ensemble members
-ensmem=${ENS_MEM_START}
+ensmem=${ENS_MEM_START#0}
 (( end_member = ${ENS_MEM_START} + ${ENS_MEMNUM_THIS} ))
 
 while [[ $ensmem -lt $end_member ]];do
@@ -127,15 +134,16 @@ while [[ $ensmem -lt $end_member ]];do
  fi
  ${MKDIR} -p ${workdir}/INPUT
  ${MKDIR} -p ${workdir}/RESTART
+
  cd ${workdir}/INPUT
  #${CP} -f ${INIHOME}/${INIT_YYYYMMDDHHMM}_DA/chgresprd/gfs_bndy.tile7*.nc .
- ${LN} -sf ${FV3LAM_STATIC}/Fix_sar/C3337_mosaic.halo3.nc grid_spec.nc
- ${LN} -sf ${FV3LAM_STATIC}/Fix_sar/C3337_grid.tile7.halo3.nc C3337_grid.tile7.halo3.nc
- ${LN} -sf ${FV3LAM_STATIC}/Fix_sar/C3337_grid.tile7.halo4.nc grid.tile7.halo4.nc
- ${LN} -sf ${FV3LAM_STATIC}/Fix_sar/C3337_oro_data.tile7.halo0.nc oro_data.nc
- ${LN} -sf ${FV3LAM_STATIC}/Fix_sar/C3337_oro_data.tile7.halo4.nc oro_data.tile7.halo4.nc
- ${LN} -sf ${FV3LAM_STATIC}/Fix_sar/C3337_oro_data_ss.tile7.halo0.nc oro_data_ss.nc
- ${LN} -sf ${FV3LAM_STATIC}/Fix_sar/C3337_oro_data_ls.tile7.halo0.nc oro_data_ls.nc
+ ${LN} -sf ${FV3LAM_STATIC}/Fix_sar.${eventdate}/C3337_mosaic.halo3.nc grid_spec.nc
+ ${LN} -sf ${FV3LAM_STATIC}/Fix_sar.${eventdate}/C3337_grid.tile7.halo3.nc C3337_grid.tile7.halo3.nc
+ ${LN} -sf ${FV3LAM_STATIC}/Fix_sar.${eventdate}/C3337_grid.tile7.halo4.nc grid.tile7.halo4.nc
+ ${LN} -sf ${FV3LAM_STATIC}/Fix_sar.${eventdate}/C3337_oro_data.tile7.halo0.nc oro_data.nc
+ ${LN} -sf ${FV3LAM_STATIC}/Fix_sar.${eventdate}/C3337_oro_data.tile7.halo4.nc oro_data.tile7.halo4.nc
+ ${LN} -sf ${FV3LAM_STATIC}/Fix_sar.${eventdate}/C3337_oro_data_ss.tile7.halo0.nc oro_data_ss.nc
+ ${LN} -sf ${FV3LAM_STATIC}/Fix_sar.${eventdate}/C3337_oro_data_ls.tile7.halo0.nc oro_data_ls.nc
 
  if [ ${COLD_START} -eq 1 ]; then
    ${LN} -sf ${INIHOME}/${INIT_YYYYMMDDHHMM}_$ensmem/chgresprd/gfs_data.tile7.halo0.nc .
@@ -146,39 +154,46 @@ while [[ $ensmem -lt $end_member ]];do
    rm -f gfs_bndy.tile7.000.nc
    #${CP} -f ${INIHOME}/${INIT_YYYYMMDDHHMM}_DA/chgresprd/gfs_bndy.tile7.000.nc .
    #${CP} -f ${INIHOME}/${INIT_YYYYMMDDHHMM}_DA/chgresprd/gfs_bndy.tile7.001.nc .
-   echo "Copying ${INIHOME}/${INIT_YYYYMMDDHHMM}_${ensmem}/chgresprd/gfs_bndy.tile7.[000|00:15].nc to $(PWD) ..."
+   echo "Copying ${INIHOME}/${INIT_YYYYMMDDHHMM}_${ensmem}/chgresprd/gfs_bndy.tile7.000.nc to $(PWD) ..."
    ${CP} -f ${INIHOME}/${INIT_YYYYMMDDHHMM}_${ensmem}/chgresprd/gfs_bndy.tile7.000.nc .
-   ${CP} -f ${INIHOME}/${INIT_YYYYMMDDHHMM}_${ensmem}/chgresprd/gfs_bndy.tile7.00:15.nc gfs_bndy.tile7.001.nc
+   #${CP} -f ${INIHOME}/${INIT_YYYYMMDDHHMM}_${ensmem}/chgresprd/gfs_bndy.tile7.00:15.nc gfs_bndy.tile7.001.nc
  else
-   cd ${workdir}/INPUT
-   ${LN} -sf ../ANA/coupler.res coupler.res
-   ${LN} -sf ../ANA/fv_core.res.nc fv_core.res.nc
-   ${LN} -sf ../ANA/fv_core.res.tile1.nc fv_core.res.tile1.nc
+   #cd ${workdir}/INPUT
+   ${LN} -sf ../ANA/coupler.res             coupler.res
+   ${LN} -sf ../ANA/fv_core.res.nc          fv_core.res.nc
+   ${LN} -sf ../ANA/fv_core.res.tile1.nc    fv_core.res.tile1.nc
    ${LN} -sf ../ANA/fv_srf_wnd.res.tile1.nc fv_srf_wnd.res.tile1.nc
-   ${LN} -sf ../ANA/fv_tracer.res.tile1.nc fv_tracer.res.tile1.nc
-   ${LN} -sf ../ANA/phy_data.nc phy_data.nc
-   ${LN} -sf ../ANA/sfc_data.nc sfc_data.nc
-   ${LN} -sf ../ANA/fv_core.res.tile1_new.nc .
+   ${LN} -sf ../ANA/fv_tracer.res.tile1.nc  fv_tracer.res.tile1.nc
+   ${LN} -sf ../ANA/phy_data.nc             phy_data.nc
+   ${LN} -sf ../ANA/sfc_data.nc             sfc_data.nc
+   ${LN} -sf ../ANA/fv_core.res.tile1_new.nc   .
    ${LN} -sf ../ANA/fv_tracer.res.tile1_new.nc .
-   ${CP} -f ../ANA/gfs_bndy.tile7.*nc .
-   cd ${workdir}
-   echo "Copying  gfs_bndy.tile7.000.nc & gfs_bndy.tile7.000_gsi.nc from ../ANA  ..."
-   mv -f INPUT/gfs_bndy.tile7.001.nc INPUT/gfs_bndy.tile7.000.nc
-   mv -f INPUT/gfs_bndy.tile7.001_gsi.nc INPUT/gfs_bndy.tile7.000_gsi.nc
+   ${CP} -f  ../ANA/gfs_bndy.tile7.*nc         .
 
-   bndy_min=$(( BNDY_END_sec/60 ))
-   bndy_hhh=$(( bndy_min/60 ))
-   bndy_min=$(( bndy_min-bndy_hhh*60 ))
-   bndy1=$( printf "%02d:%02d" $bndy_hhh $bndy_min)
-   echo "Copying ${INIHOME}/${INIT_YYYYMMDDHHMM}_${ensmem}/chgresprd/gfs_bndy.tile7.${bndy1}.nc  to INPUT/gfs_bndy.tile7.001.nc ..."
-   ${CP} -f ${INIHOME}/${INIT_YYYYMMDDHHMM}_${ensmem}/chgresprd/gfs_bndy.tile7.${bndy1}.nc INPUT/gfs_bndy.tile7.001.nc
+   echo "Moving gfs_bndy.tile7.001.nc & gfs_bndy.tile7.0001_gsi.nc to  gfs_bndy.tile7.000.nc & gfs_bndy.tile7.0000_gsi.nc ..."
+   mv -f gfs_bndy.tile7.001.nc     gfs_bndy.tile7.000.nc
+   mv -f gfs_bndy.tile7.001_gsi.nc gfs_bndy.tile7.000_gsi.nc
 
-   ${LN} -sf ${INIHOME}/${INIT_YYYYMMDDHHMM}_$ensmem/chgresprd/gfs_data.tile7.halo0.nc INPUT/gfs_data.nc
-   ${LN} -sf ${INIHOME}/${INIT_YYYYMMDDHHMM}_$ensmem/chgresprd/gfs_ctrl.nc INPUT/
-
+   ${LN} -sf ${INIHOME}/${INIT_YYYYMMDDHHMM}_$ensmem/chgresprd/gfs_data.tile7.halo0.nc gfs_data.nc
+   ${LN} -sf ${INIHOME}/${INIT_YYYYMMDDHHMM}_$ensmem/chgresprd/gfs_ctrl.nc .
  fi
 
- ${ECHO} "start run ${workdir}"
+ bndy_min=$(( BNDY_END_sec/60 ))
+ bndy_hhh=$(( bndy_min/60 ))
+ bndy_min=$(( bndy_min-bndy_hhh*60 ))
+ bndy1=$( printf "%02d:%02d" $bndy_hhh $bndy_min)
+ echo "Copying ${INIHOME}/${INIT_YYYYMMDDHHMM}_${ensmem}/chgresprd/gfs_bndy.tile7.${bndy1}.nc to gfs_bndy.tile7.001.nc ..."
+ ${CP} -f ${INIHOME}/${INIT_YYYYMMDDHHMM}_${ensmem}/chgresprd/gfs_bndy.tile7.${bndy1}.nc gfs_bndy.tile7.001.nc
+
+ #if [ -z ${FRACTION_BC+x} ]; then
+ #    sed -i 's/_BC_INTV_/1/g' ./input.nml
+ #else
+ #    echo "FRACTION_BC is set to '${FRACTION_BC}'"
+ #    bc_update_interval=$(echo "scale=2;(60-$start_minute)/60" | bc )
+ #    sed -i "/bc_update_interval/s/_BC_INTV_/${bc_update_interval}/" ./input.nml
+ #fi
+
+ ${ECHO} "start run in ${workdir} ..."
  cd ${workdir}
 
  # --- Static files
@@ -200,18 +215,22 @@ while [[ $ensmem -lt $end_member ]];do
  ${LN} -sf ${FIXam}/CCN_ACTIVATE.BIN .
 
  # --- CCPP suite
- ${LN} -sf ${FV3LAM_STATIC}/suite_FV3_HRRR.xml .
+ if [[ ${CCPP_SUITE} =~ "HRRR" ]]; then
+     ${LN} -sf ${FV3LAM_STATIC}/FV3_${CCPP_SUITE}/suite_FV3_HRRR.xml .
+ else
+     ${LN} -sf ${FV3LAM_STATIC}/FV3_${CCPP_SUITE}/suite_FV3_RRFS_v1nssl_lsmnoah.xml .
+ fi
 
  # --- Others
- ${CP} -f ${FV3LAM_STATIC}/data_table .
- ${CP} -f ${FV3LAM_STATIC}/diag_table_cycle ./diag_table
- ${CP} -f ${FV3LAM_STATIC}/field_table .
+ ${CP} -f ${FV3LAM_STATIC}/FV3_${CCPP_SUITE}/data_table .
+ ${CP} -f ${FV3LAM_STATIC}/FV3_${CCPP_SUITE}/diag_table_cycle ./diag_table
+ ${CP} -f ${FV3LAM_STATIC}/FV3_${CCPP_SUITE}/field_table .
  ${CP} -f ${FV3LAM_STATIC}/freezeH2O.dat .
  ${CP} -f ${FV3LAM_STATIC}/qr_acr_qg.dat .
  ${CP} -f ${FV3LAM_STATIC}/qr_acr_qs.dat .
  ${CP} -f ${FV3LAM_STATIC}/qr_acr_qgV2.dat .
  ${CP} -f ${FV3LAM_STATIC}/qr_acr_qsV2.dat .
- ${CP} -f ${FV3LAM_STATIC}/nems.configure .
+ ${CP} -f ${FV3LAM_STATIC}/FV3_${CCPP_SUITE}/nems.configure .
 
  if [ ${COLD_START} -eq 1 ]; then
    make_nh='.true.'
@@ -235,6 +254,12 @@ while [[ $ensmem -lt $end_member ]];do
    bcsgsi='.true.'
    lsoil=9
    nstf2=0
+   if [[ ${CCPP_SUITE} =~ "HRRR" ]]; then
+     lsoil=9
+   else
+     lsoil=4
+   fi
+
  fi
 
  # --- model_configure
@@ -259,6 +284,17 @@ while [[ $ensmem -lt $end_member ]];do
  sed 's/_WRITE_BCS_/'${writebcs}'/g'    | \
  sed 's/_BCS_GSI_/'${bcsgsi}'/g'  > ./input.nml
 
+ source ${FV3LAM_STATIC}/Fix_sar.${eventdate}/model_grid.${eventdate}
+ sed -i "/target_lat/s/=.*/= $cen_lat/;/target_lon/s/=.*/= $cen_lon/" ./input.nml
+
+ #if [ -z ${FRACTION_BC+x} ]; then
+ #    sed -i 's/_BC_INTV_/1/g' ./input.nml
+ #else
+ #    echo "FRACTION_BC is set to '${FRACTION_BC}'"
+ #    bc_update_interval=$(echo "scale=2;(60-$start_minute)/60" | bc )
+ #    sed -i "/bc_update_interval/s/_BC_INTV_/${bc_update_interval}/" ./input.nml
+ #fi
+
  # processing for inserting GSI into bndy files
  mkdir -p create_expanded_restart_files_for_DA
  cd create_expanded_restart_files_for_DA
@@ -281,8 +317,8 @@ while [[ $ensmem -lt $end_member ]];do
    ${ECHO} "ERROR: exec_create_restart exited with status: ${error}"
    exit ${error}
  fi
- mv fv_core.res.tile1_new.nc ../RESTART/
- mv fv_tracer.res.tile1_new.nc ../RESTART/
+ ${CP_OR_MV} fv_core.res.tile1_new.nc ../RESTART/
+ ${CP_OR_MV} fv_tracer.res.tile1_new.nc ../RESTART/
  cd ..
 
  export LD_LIBRARY_PATH=${ldlibrarypath}
@@ -292,6 +328,8 @@ while [[ $ensmem -lt $end_member ]];do
  #module use -a /lfs4/NAGAPE/hpc-wof1/ywang/EPIC2/oumap/ufs-srweather-app/env
  #module load build_jet.env
  #module list
+
+ #rm -rf ${DATAHOME}/${START_TIME}/fv3prd_mem${ensmemid}/SUCCESS ${DATAHOME}/${START_TIME}/fv3prd_mem${ensmemid}/FAILED
 
  itry=1
  while [ ${itry} -le 1 ] ; do
@@ -309,7 +347,10 @@ while [[ $ensmem -lt $end_member ]];do
 
  if [ ${error} -ne 0 ]; then
    ${ECHO} "ERROR: FV3LAM exited with status: ${error}"
+   #touch ${DATAHOME}/${START_TIME}/fv3prd_mem${ensmemid}/FAILED
    exit ${error}
+ #else
+   #touch ${DATAHOME}/${START_TIME}/fv3prd_mem${ensmemid}/SUCCESS
  fi
 
  workdir=${DATAHOME}/${END_YYYYMMDDHHMM}/fv3prd_mem${ensmemid}
@@ -327,10 +368,10 @@ while [[ $ensmem -lt $end_member ]];do
  cp grid_spec.nc $GUESSdir/.
  cp grid_spec.nc RESTART/.
  cd RESTART
- mv coupler.res $GUESSdir/.
- mv fv_core.res.nc $GUESSdir/.
- mv fv_core.res.tile1.nc $GUESSdir/.
- mv fv_tracer.res.tile1.nc $GUESSdir/.
+ ${CP_OR_MV} coupler.res $GUESSdir/.
+ ${CP_OR_MV} fv_core.res.nc $GUESSdir/.
+ ${CP_OR_MV} fv_core.res.tile1.nc $GUESSdir/.
+ ${CP_OR_MV} fv_tracer.res.tile1.nc $GUESSdir/.
  cp sfc_data.nc $GUESSdir/.
  # Now move orig sized sfc_data file to ANLdir since GSI job will now only use
  # bigger one
@@ -338,28 +379,28 @@ while [[ $ensmem -lt $end_member ]];do
  cp ../INPUT/gfs_ctrl.nc $ANLdir/
 
  #Move enlarged restart files for 00-h BC's
- mv fv_tracer.res.tile1_new.nc $GUESSdir/.
- mv fv_core.res.tile1_new.nc $GUESSdir/.
+ ${CP_OR_MV} fv_tracer.res.tile1_new.nc $GUESSdir/.
+ ${CP_OR_MV} fv_core.res.tile1_new.nc $GUESSdir/.
 
  # Make enlarged sfc file
- mv sfc_data.nc sfc_data_orig.nc
- mv grid_spec.nc grid_spec_orig.nc
+ ${CP_OR_MV} sfc_data.nc sfc_data_orig.nc
+ ${CP_OR_MV} grid_spec.nc grid_spec_orig.nc
 
- ${CP} -s ${FV3LAM_STATIC}/Fix_sar/C3337_grid.tile7.halo3.nc grid.tile7.halo3.nc
+ ${CP} -s ${FV3LAM_STATIC}/Fix_sar.${eventdate}/C3337_grid.tile7.halo3.nc grid.tile7.halo3.nc
  echo "3. running ${exec_prep_DA} for $ensmem ...."
  export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/apps/netcdf/4.7.4/intel/18.0.5/lib
  ${exec_prep_DA}
 
  echo "4. Moving sfc_data_new.nc,grid_spec_new.nc,phy_data.nc from $(pwd) to ${GUESSdir} ..."
- mv sfc_data_new.nc $GUESSdir/sfc_data_new.nc
- mv grid_spec_new.nc $GUESSdir/grid_spec_new.nc
- mv phy_data.nc $GUESSdir/
+ ${CP_OR_MV} sfc_data_new.nc $GUESSdir/sfc_data_new.nc
+ ${CP_OR_MV} grid_spec_new.nc $GUESSdir/grid_spec_new.nc
+ ${CP_OR_MV} phy_data.nc $GUESSdir/
 
  # These are not used in GSI but are needed to warmstart FV3
  # so they go directly into ANLdir
  #mv phy_data.nc $ANLdir/phy_data.nc
  echo "5. Moving fv_srf_wnd.res.tile1.nc from $(pwd) to $ANLdir ..."
- mv fv_srf_wnd.res.tile1.nc $ANLdir/fv_srf_wnd.res.tile1.nc
+ ${CP_OR_MV} fv_srf_wnd.res.tile1.nc $ANLdir/fv_srf_wnd.res.tile1.nc
  #mv ../INPUT/gfs_bndy.tile7.001.nc $ANLdir/
 
  bndy_min=$(( ANL_BNDY_sec/60 ))

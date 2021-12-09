@@ -5,6 +5,33 @@
 #
 ##########################################################################
 
+# Jet environment specific
+source /etc/profile.d/modules.sh
+module purge
+module load cmake/3.16.1
+module load intel/18.0.5.274
+module load impi/2018.4.274
+module load netcdf/4.7.0 #don't load netcdf/4.7.4 from hpc-stack, GSI does not compile with it.
+
+module use /lfs4/HFIP/hfv3gfs/nwprod/hpc-stack/libs/modulefiles/stack
+module load hpc/1.1.0
+module load hpc-intel/18.0.5.274
+module load hpc-impi/2018.4.274
+module load bufr/11.4.0
+module load bacio/2.4.1
+module load crtm/2.3.0
+module load ip/3.3.3
+module load nemsio/2.5.2
+module load sp/2.3.3
+module load w3emc/2.7.3
+module load w3nco/2.4.1
+module load sfcio/1.4.1
+module load sigio/2.3.2
+module load wrf_io/1.2.0
+module load szip
+export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/apps/szip/2.1/lib
+# End of Jet environment
+
 np=${PROC}
 
 # Set up paths to shell commands
@@ -39,12 +66,6 @@ if [ ! "${STATIC_DIR_GSI}" ]; then
 fi
 echo "STATIC_DIR_GSI = ${STATIC_DIR_GSI}"
 
-if [ ! "${GSIPROC}" ]; then
-  echo "ERROR: The variable $GSIPROC must be set to contain the number of processors to run GSI"
-  exit 1
-fi
-echo "GSIPROC = ${GSIPROC}"
-
 if [ ! "${ANALYSIS_TIME}" ]; then
   echo "ERROR: The variable $ANALYSIS_TIME must be set to the analysis time (YYYYMMDDHH)"
   exit 1
@@ -63,17 +84,7 @@ fi
 
 echo "WORK_ROOT = ${WORK_ROOT}"
 
-if [ ! "${NUM_DOMAINS}" ]; then
-  echo "ERROR: \$NUM_DOMAINS is not defined!"
-  exit 1
-fi
-echo "NUM_DOMAINS = ${NUM_DOMAINS}"
-
-if [ ! "${CONV_RADAR}" ]; then
-   echo "ERROT: \$CONV_RADAR is not defined"
-   exit 1
-fi
-echo "CONV_RADAR = ${CONV_RADAR}"
+NUM_DOMAINS=1
 
 if [ ! "${CONV_ONLY}" ]; then
    echo "ERROT: \$CONV_ONLY is not defined"

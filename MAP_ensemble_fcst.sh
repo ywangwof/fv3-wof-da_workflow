@@ -1,18 +1,98 @@
 #! /bin/sh
-#SBATCH -J HWT_rtA
-#SBATCH -o ./HWT_rtA.log
-#SBATCH -n 3360
-#SBATCH --partition=sjet,vjet,xjet,kjet
-#SBATCH -t 05:30:00
-#SBATCH -A hpc-wof1
 
 # ---- April 3 2021, initially created by Y. Wang & X. Wang (OU MAP Lab)
 #                    yongming.wang@ou.edu  xuguang.wang@ou.edu
 ##########################################################################
 
-. system_env.dat_rt
+print_help () {
+  echo " "
+  echo "  Usage: $0 [options] EVENTDATE"
+  echo "  "
+  echo "  PURPOSE: Run 6-h FV3 forecast from DA cycles"
+  echo "  "
+  echo "  EVENTDATE:  YYYYMMDD"
+  echo " "
+  echo "  Options: "
+  echo "         -h | --help        Show this help"
+  echo "         -v | --verbose     Show more outputs while executing"
+  echo "         -d | -n            Show commands but do not execute them"
+  echo "         -s | --bgnc        Starting number of forecast (from 0 at \${FCST_BEG})"
+  echo "         -e | --endc        End number of forecast (terminated by \${FCST_END})"
+  echo "         -m | --map         Show mapping between number of cycles and data-time."
+  echo "         -p | --ccpp        CCPP suite to be used (HRRR or NSSL)."
+  echo " "
+  echo "               --- by Yunheng Wang (10/27/2021) - version 1.0 ---"
+  echo "  "
+  exit $1
+}
 
 SH=/bin/sh
+
+#-----------------------------------------------------------------------
+# Parsing arguments
+#-----------------------------------------------------------------------
+showcmd="sbatch" # "sbatch" or "echo sbatch"
+help=false;
+verbose=false;
+
+todaydate=20200515
+istart=0    # Starting from 0
+iend=10
+showmap=false
+thistime=""
+ccpp="NSSL"
+
+while [ $# -ge 1 ]; do
+  case $1 in
+    "-h" | "--help"    ) print_help 0   ;;
+    "-v" | "--verbose" ) verbose=true   ;;
+    "-d" | "-n"        ) showcmd='echo' ;;
+    "-m" | "-map"      ) showmap=true   ;;
+    "-s" )
+        istart=$2
+        shift
+        ;;
+    "-e" )
+        iend=$2
+        shift
+        ;;
+    "-p" )
+        if [[ $2 =~ HRRR|NSSL ]]; then
+            ccpp=$2
+        else
+            echo "ERROR: Unsupport argument \"-p $2\". "
+            print_help 1
+        fi
+        shift
+        ;;
+    * )
+        if [[ $1 =~ ^[0-9]{12}$ ]]; then
+            thisdate=${1:0:8}
+            thistime=${1:8:4}
+            if [[ $thistime -lt 1500 ]]; then
+                todaydate=$(date -d "$thisdate 1 day ago" +%Y%m%d)
+            else
+                todaydate=${thisdate}
+            fi
+        elif [[ $1 =~ ^[0-9]{8}$ ]]; then
+            todaydate=$1
+        else
+            echo "ERROR: Unsupport argument: $1."
+            print_help 1
+        fi
+        ;;
+  esac
+  shift
+done
+
+nextdate=$(date -d "$todaydate 1 day" +%Y%m%d)
+
+. system_env.dat_rt
+
+export CCPP_SUITE="$ccpp"
+export DATABASE_DIR="/lfs4/NAGAPE/hpc-wof1/ywang/EPIC2/oumap/rundir/${CCPP_SUITE}/${todaydate}"
+export LOG_DIR=${DATABASE_DIR}/log
+export DATAROOT_INI=${DATABASE_DIR}/ini
 
 if_skip_all=no
 
@@ -20,7 +100,7 @@ if [ ${if_skip_all} == 'yes' ]; then
   if_skip_fcst6h=yes
   if_skip_upp=yes
 else
-  if_skip_fcst6h=yes
+  if_skip_fcst6h=no
   if_skip_upp=no
 fi
 
@@ -29,16 +109,34 @@ mkdir -p ${LOG_DIR}
 # --- Free forecast
 # ---
 
-ifcst=3
 ens_size_fcst=18
 fcst_beg_s=$(date +%s -d "${FCST_BEG}")
 fcst_end_s=$(date +%s -d "${FCST_END}")
-icycle=${1-0}
-for ((i=fcst_beg_s+icycle*3600;i<=fcst_end_s;i+=3600)); do
+
+if [[ $thistime != "" ]]; then
+    thisseconds=$(date +%s -d "$thisdate $thistime")
+    icycle=$(( (thisseconds-fcst_beg_s)/3600 ))
+    #echo "Event date: $todaydate; Next day: $nextdate; icycle = $icycle"
+    istart=$icycle
+fi
+echo "Event date: $todaydate; CCPP_SUITE = ${CCPP_SUITE}; icycle = $istart"
+echo "Run dir   : ${DATABASE_DIR}"
+
+bgnsec=$(( fcst_beg_s+istart*3600 ))
+endsec=$(( fcst_beg_s+iend*3600 ))
+endsec=$(( endsec>fcst_end_s ? fcst_end_s : endsec ))
+
+if $showmap; then
+    if_skip_fcst6h=yes
+fi
+
+icycle=$istart
+for ((i=bgnsec;i<=endsec;i+=3600)); do
 
     FCST_DATE=$(date -d @$i +%Y%m%d%H%M)
     FCST_TIME=$(date -d @$i +%H%M)
-    FCST_LENG=$(( ifcst*3600 ))
+
+    echo "icycle=$icycle: forecast date: $FCST_DATE"
 
     if [ ${if_skip_fcst6h} == 'no' ]; then
       echo "Start longer forecast for ${FCST_DATE} at $(date +%Y-%m-%d_%H:%M)"
@@ -78,9 +176,10 @@ for ((i=fcst_beg_s+icycle*3600;i<=fcst_end_s;i+=3600)); do
 #SBATCH --tasks-per-node=6
 #SBATCH -t 02:30:00
 
+  export eventdate=${todaydate}
   export INIT_TIME=${INIT_DATE}
   export START_TIME=${FCST_DATE}
-  export FCST_LENGTH=${FCST_LENG}
+  export FCST_LENGTH=${FCST_LENGTH}
   export FV3LAM_ROOT=${FV3LAM_ROOT}
   export FV3LAM_STATIC=${STATIC_DIR_FV3LAM}
   export DATAHOME=${DATABASE_DIR}
@@ -88,6 +187,7 @@ for ((i=fcst_beg_s+icycle*3600;i<=fcst_end_s;i+=3600)); do
   export ENS_MEM_START=${imem}
   export ENS_MEMNUM_THIS=1
   export PROC=${corenum}
+  export CCPP_SUITE=${CCPP_SUITE}
 
   memstr4=${memstr4}
 
@@ -102,7 +202,7 @@ for ((i=fcst_beg_s+icycle*3600;i<=fcst_end_s;i+=3600)); do
 
 EOF
         #chmod u+x ${LOG_DIR}/fv3fcst_${imem}.sh
-        sbatch ${LOG_DIR}/fv3fcst_${FCST_TIME}_${memstr4}.sh
+        ${showcmd} ${LOG_DIR}/fv3fcst_${FCST_TIME}_${memstr4}.sh
 
         (( imem += 1 ))
 
@@ -128,6 +228,8 @@ EOF
           sleep 10
       done
     fi
+
+    let icycle++
 done
 
 exit 0

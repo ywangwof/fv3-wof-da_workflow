@@ -1,0 +1,6 @@
+#!/bin/bash -l
+#set -x
+
+#module load  rocoto/1.3.3
+
+rocotorun -v 10 -w da_cycles.xml -d da_cycles_20210527.db

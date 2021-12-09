@@ -5,6 +5,33 @@
 #
 ##########################################################################
 
+# Jet environment specific
+source /etc/profile.d/modules.sh
+module purge
+module load cmake/3.16.1
+module load intel/18.0.5.274
+module load impi/2018.4.274
+module load netcdf/4.7.0 #don't load netcdf/4.7.4 from hpc-stack, GSI does not compile with it.
+
+module use /lfs4/HFIP/hfv3gfs/nwprod/hpc-stack/libs/modulefiles/stack
+module load hpc/1.1.0
+module load hpc-intel/18.0.5.274
+module load hpc-impi/2018.4.274
+module load bufr/11.4.0
+module load bacio/2.4.1
+module load crtm/2.3.0
+module load ip/3.3.3
+module load nemsio/2.5.2
+module load sp/2.3.3
+module load w3emc/2.7.3
+module load w3nco/2.4.1
+module load sfcio/1.4.1
+module load sigio/2.3.2
+module load wrf_io/1.2.0
+module load szip
+export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/apps/szip/2.1/lib
+# End of Jet environment
+
 np=${PROC}
 
 # Set up paths to shell commands
@@ -39,11 +66,6 @@ if [ ! "${STATIC_DIR_GSI}" ]; then
 fi
 echo "STATIC_DIR_GSI = ${STATIC_DIR_GSI}"
 
-if [ ! "${GSIPROC}" ]; then
-  echo "ERROR: The variable $GSIPROC must be set to contain the number of processors to run GSI"
-  exit 1
-fi
-echo "GSIPROC = ${GSIPROC}"
 
 if [ ! "${ANALYSIS_TIME}" ]; then
   echo "ERROR: The variable $ANALYSIS_TIME must be set to the analysis time (YYYYMMDDHH)"
@@ -57,17 +79,7 @@ if [ ! "${WORK_ROOT}" ]; then
 fi
 echo "WORK_ROOT = ${WORK_ROOT}"
 
-if [ ! "${NUM_DOMAINS}" ]; then
-  echo "ERROR: \$NUM_DOMAINS is not defined!"
-  exit 1
-fi
-echo "NUM_DOMAINS = ${NUM_DOMAINS}"
-
-if [ ! "${CONV_RADAR}" ]; then
-   echo "ERROT: \$CONV_RADAR is not defined"
-   exit 1
-fi
-echo "CONV_RADAR = ${CONV_RADAR}"
+NUM_DOMAINS=1
 
 if [ ! "${CONV_ONLY}" ]; then
    echo "ERROT: \$CONV_ONLY is not defined"
@@ -138,7 +150,7 @@ GSI_EXE=${GSI_ROOT}/gsi.exe
  if_observer=Yes
 
 # loop over ensemble members
-ensmem=${ENS_MEM_START}
+ensmem=${ENS_MEM_START#0}
 (( end_member = ${ENS_MEM_START} + ${ENS_MEMNUM_THIS} ))
 
 while [[ $ensmem -lt $end_member ]];do
@@ -192,6 +204,15 @@ while [[ $ensmem -lt $end_member ]];do
      elif [ ${RADAR_ONLY} -eq 1 ]; then
        ANA_ROOT_DIR=${WORK_ROOT}/enkfprd_radar_d01
      fi
+
+     while [[ ! -d ${ANA_ROOT_DIR} ]]; do
+         if [[ ${ensmem} -eq 1 ]]; then
+             mkdir -p ${ANA_ROOT_DIR}
+         else
+             sleep 5
+         fi
+     done
+
      rm -f ${ANA_ROOT_DIR}/fv3sar_tile1_${member}_dynvar
      rm -f ${ANA_ROOT_DIR}/fv3sar_tile1_${member}_tracer
      rm -f ${ANA_ROOT_DIR}/fv3sar_tile1_${member}_phyvar

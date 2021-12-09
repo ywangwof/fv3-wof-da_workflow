@@ -79,9 +79,15 @@ if [ ${EARLY} -eq 0 ]; then
   #  ${CP} ${PREPBUFR}/${YYYYJJJHH00}.rap.t${HH}z.prepbufr.tm00.${YYYYMMDD} .
   #  ${LN} -s ${YYYYJJJHH00}.rap.t${HH}z.prepbufr.tm00.${YYYYMMDD} newgblav.${YYYYMMDD}.rap.t${HH}z.prepbufr
   #fi
-  echo "Linkg ${PREPBUFR}/rtma${YYYYMMDD}${HH}00.prepbufr.tm00 to $(pwd) ..."
+
   if [ -e ${PREPBUFR}/rtma.${YYYYMMDD}${HH}00.prepbufr.tm00 ]; then
-    ${LN} -s ${PREPBUFR}/rtma.${YYYYMMDD}${HH}00.prepbufr.tm00 newgblav.${YYYYMMDD}.rap.t${HH}z.prepbufr
+      # RTMA data
+      echo "Linking ${PREPBUFR}/rtma.${YYYYMMDD}${HH}00.prepbufr.tm00 to $(pwd) ..."
+      ${LN} -s ${PREPBUFR}/rtma.${YYYYMMDD}${HH}00.prepbufr.tm00 newgblav.${YYYYMMDD}.rap.t${HH}z.prepbufr
+  elif [ -e ${PREPBUFR}/rap.${YYYYMMDD}${HH}.prepbufr.tm00 ]; then
+      # RAP data
+      echo "Linking ${PREPBUFR}/rap.${YYYYMMDD}${HH}.prepbufr.tm00 to $(pwd) ..."
+      ${LN} -s ${PREPBUFR}/rap.${YYYYMMDD}${HH}.prepbufr.tm00 newgblav.${YYYYMMDD}.rap.t${HH}z.prepbufr
   fi
 fi
 

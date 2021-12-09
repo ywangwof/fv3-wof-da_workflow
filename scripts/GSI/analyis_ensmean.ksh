@@ -4,6 +4,32 @@
 #Script Name: wrf_arw_cycle.ksh
 #
 ##########################################################################
+# Jet environment specific
+source /etc/profile.d/modules.sh
+module purge
+module load cmake/3.16.1
+module load intel/18.0.5.274
+module load impi/2018.4.274
+module load netcdf/4.7.0 #don't load netcdf/4.7.4 from hpc-stack, GSI does not compile with it.
+
+module use /lfs4/HFIP/hfv3gfs/nwprod/hpc-stack/libs/modulefiles/stack
+module load hpc/1.1.0
+module load hpc-intel/18.0.5.274
+module load hpc-impi/2018.4.274
+module load bufr/11.4.0
+module load bacio/2.4.1
+module load crtm/2.3.0
+module load ip/3.3.3
+module load nemsio/2.5.2
+module load sp/2.3.3
+module load w3emc/2.7.3
+module load w3nco/2.4.1
+module load sfcio/1.4.1
+module load sigio/2.3.2
+module load wrf_io/1.2.0
+module load szip
+export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/apps/szip/2.1/lib
+# End of Jet environment
 
 np=${PROC}
 
@@ -41,11 +67,7 @@ fi
 
 echo "WORK_ROOT = ${WORK_ROOT}"
 
-if [ ! "${NUM_DOMAINS}" ]; then
-  echo "ERROR: \$NUM_DOMAINS is not defined!"
-  exit 1
-fi
-echo "NUM_DOMAINS = ${NUM_DOMAINS}"
+NUM_DOMAINS=1
 
 if [ ! "${GSI_ROOT}" ]; then
   echo "ERROR: \$GSI_ROOT is not defined!"
@@ -70,8 +92,8 @@ ensnum=${ENSEMBLE_SIZE}
 
 echo "calculate ensemble mean using gen_be_ensmean.exe"
 
-  DOMAIN=1
- while [[ $DOMAIN -le $NUM_DOMAINS ]];do
+DOMAIN=1
+while [[ $DOMAIN -le $NUM_DOMAINS ]];do
 
    if [ ${NVAR} -gt 7 ] ; then
      ENKF_ROOT=${WORK_ROOT}/enkfprd_radar_d0${DOMAIN}
@@ -180,7 +202,7 @@ echo "calculate ensemble mean using gen_be_ensmean.exe"
   done
 
    (( DOMAIN += 1 ))
- done
+done
 
  echo "" > ${ENKF_ROOT}/recenter_finished
 

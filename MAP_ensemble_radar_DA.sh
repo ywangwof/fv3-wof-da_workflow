@@ -6,119 +6,462 @@
 #
 ##########################################################################
 
-. system_env.dat_rt
+print_help () {
+  echo " "
+  echo "  Usage: $0 [options] COMMANDS EVENTDATE"
+  echo "  "
+  echo "  Valid commands are:"
+  echo "  "
+  echo "     0. chgres    0.1 chgres_ics 0.2 chgres_lbcs"
+  echo "     1. convobs   2. radarobs    3. fv3"
+  echo "     4. fgmean    5. gsimean     6. gsimem"
+  echo "     7. enkf      8. recenter    9. updateLBC"
+  echo "     all: all DA cycle programs from 1 to 9 (DEFAULT)"
+  echo "  "
+  echo "  EVENTDATE:  YYYYMMDD"
+  echo " "
+  echo "  Options: "
+  echo "         -h | --help        Show this help"
+  echo "         -v | --verbose     Show more outputs while executing"
+  echo "         -d | -n            Show commands but do not execute them"
+  echo "         -s | --bgnc        Starting number of cycle (from 1, 0 is reserved to run CHGRES only)"
+  echo "         -e | --endc        End number of cycle (terminated by \$END_DATE)"
+  echo "         -c | --continue    Continue to run commands from the given one in the above order (DEFAULT no unless command is 'all')"
+  echo "         -m | --map         Show mapping between number of cycles and data-time."
+  echo "         -p | --ccpp        CCPP suite to be used (HRRR or NSSL)."
+  echo " "
+  echo "               --- by Yunheng Wang (10/27/2021) - version 1.0 ---"
+  echo "  "
+  exit $1
+}
+
+function join_by { local IFS="$1"; shift; echo "$*"; }
 
 SH=/bin/sh
 
+#-----------------------------------------------------------------------
+# Parsing arguments
+#-----------------------------------------------------------------------
+showcmd="sbatch" # "sbatch" or "echo sbatch"
+help=false;
+verbose=false;
+
+todaydate=20200515
+istart=1    # Starting from 1
+icontinue=0
+iend=99
+command="all"
+showmap=false
+thistime=""
+ccpp="NSSL"
+
+while [ $# -ge 1 ]; do
+  case $1 in
+    "-h" | "--help"    ) print_help 0   ;;
+    "-v" | "--verbose" ) verbose=true   ;;
+    "-d" | "-n"        ) showcmd='echo' ;;
+    "-c"               ) icontinue=1    ;;
+    "-m" | "-map"      ) showmap=true   ;;
+    "-s" )
+        istart=$2
+        shift
+        ;;
+    "-e" )
+        iend=$2
+        shift
+        ;;
+    "-p" )
+        if [[ $2 =~ HRRR|NSSL ]]; then
+            ccpp=$2
+        else
+            echo "ERROR: Unsupport argument \"-p $2\". "
+            print_help 1
+        fi
+        shift
+        ;;
+    all|chgres|chgres_ics|chgres_lbcs|convobs|radarobs|fv3|fgmean|gsimean|gsimem|enkf|recenter|updateLBC )
+        command="$1"
+        ;;
+    * )
+
+        if [[ $1 =~ ^[0-9]{12}$ ]]; then
+            thisdate=${1:0:8}
+            thistime=${1:8:4}
+            if [[ $thistime -lt 1500 ]]; then
+                todaydate=$(date -d "$thisdate 1 day ago" +%Y%m%d)
+            else
+                todaydate=${thisdate}
+            fi
+        elif [[ $1 =~ ^[0-9]{8}$ ]]; then
+            todaydate=$1
+        else
+            echo "ERROR: Unsupport argument: $1."
+            print_help 1
+        fi
+        ;;
+  esac
+  shift
+done
+
+nextdate=$(date -d "$todaydate 1 day" +%Y%m%d)
+
+. system_env.dat_rt
+
+export CCPP_SUITE="$ccpp"
+export DATABASE_DIR="/lfs4/NAGAPE/hpc-wof1/ywang/EPIC2/oumap/rundir/${CCPP_SUITE}/${todaydate}"
+export LOG_DIR=${DATABASE_DIR}/log
+export DATAROOT_INI=${DATABASE_DIR}/ini
+
+if $showmap ; then
+    ymd=${BEG_DATE:0:8}
+    hhr=${BEG_DATE:8:2}
+    min=${BEG_DATE:10:2}
+    beginseconds=$(date +%s -d "${ymd} ${hhr}:${min}")
+
+    echo "Event date: $todaydate; Next day: $nextdate"
+    for ((icycle=4;icycle<48;icycle+=4));do
+      secfrombeg=$(( DA_INTV*icycle*60 ))
+      thisinseconds=$(( beginseconds + secfrombeg ))
+
+      #thiscycle=$(date +%Y%m%d%H%M -d @$thisinseconds)
+      thiscycletime=$(date +%H%M   -d @$thisinseconds)
+      thiscyclehour=$(date +%H   -d @$thisinseconds)
+
+      secfromlast=$(( DA_INTV*60 ))
+      lastinseconds=$(( thisinseconds - secfromlast ))
+      #lastcycle=$(date +%Y%m%d%H%M -d @$lastinseconds)
+      lastcycletime=$(date +%H%M   -d @$lastinseconds)
+      echo "icycle=$icycle: cycletime: ${thiscycletime}Z, FV3 forward: ${lastcycletime}Z; $((icycle+1))-${thiscyclehour}15Z; $((icycle+2))-${thiscyclehour}30Z; $((icycle+3))-${thiscyclehour}45Z;"
+    done
+
+    exit 0
+fi
+
+if [[ $thistime != "" ]]; then
+    ymd=${BEG_DATE:0:8}
+    hhr=${BEG_DATE:8:2}
+    min=${BEG_DATE:10:2}
+    beginseconds=$(date +%s -d "${ymd} ${hhr}:${min}")
+
+    thisseconds=$(date +%s -d "$thisdate $thistime")
+    icycle=$(( (thisseconds-beginseconds)/(DA_INTV*60) ))
+    #echo "Event date: $todaydate; Next day: $nextdate; icycle = $icycle"
+    istart=$icycle
+fi
+
+echo "Event date: $todaydate; CCPP_SUITE = ${CCPP_SUITE}; icycle = $istart"
+echo "Run dir   : ${DATABASE_DIR}"
+
+#-----------------------------------------------------------------------
+# Programs to be run
+#-----------------------------------------------------------------------
+if_skip_chgres=yes
+if_gotofcst=no
+
 if_skip_all=no
 
-if [ ${if_skip_all} == 'yes' ]; then
-  if_skip_chgres=yes
-  if_skip_convobs=yes
-  if_skip_radarobs=yes
-  if_skip_fv3=yes
-  if_skip_fgmean=yes
-  if_skip_gsimean=yes
-  if_skip_gsimem=yes
-  if_skip_enkf=yes
-  if_skip_updateLBC=yes
-  if_skip_recenter=yes
-else
-  if_skip_chgres=no
-  if_skip_convobs=no
-  if_skip_radarobs=no
-  if_skip_fv3=no
-  if_skip_fgmean=no
-  if_skip_gsimean=no
-  if_skip_gsimem=no
-  if_skip_enkf=no
-  if_skip_recenter=no
-  if_skip_updateLBC=no
-fi
-
-
-#
-# 0: do chgres only
-# >= 1, starting cycle 1-N
-#
-icycle=${1-1}    # Starting from 1
-
-if [[ $icycle -ge 1 ]]; then
-    if_skip_chgres=yes
-    if_gotofcst=no
-else
+allcyclecommands=(convobs radarobs fv3 fgmean gsimean gsimem enkf recenter updateLBC)
+if [[ "$command" =~ chgres.*$ ]]; then
     if_skip_chgres=no
     if_gotofcst=yes
+    case $command in
+        chgres_ics )
+            if_skip_ics=no
+            if_skip_lbcs=yes
+            ;;
+        chgres_lbcs )
+            if_skip_ics=yes
+            if_skip_lbcs=no
+            ;;
+        chgres )
+            if_skip_ics=no
+            if_skip_lbcs=no
+            ;;
+        * )
+            echo "ERROR: Unsupport command: $command."
+            print_help 1
+            ;;
+    esac
+elif [[ "$command" == "all" ]]; then
+    commands=("${allcyclecommands[@]}")
+else
+    if [[ $icontinue -eq 0 ]]; then
+        commands=($command)
+        let iend=istart           # only run this cycle
+    else
+        for i in "${!allcyclecommands[@]}"; do
+           if [[ "${command}" == "${allcyclecommands[$i]}" ]]; then
+               idx=${i}
+               break
+           fi
+        done
+        commands=("${allcyclecommands[@]:$idx}")
+    fi
 fi
 
+
+#if [ ${if_skip_all} == 'yes' ]; then
+#  if_skip_chgres=yes
+#  if_skip_convobs=yes
+#  if_skip_radarobs=yes
+#  if_skip_fv3=yes
+#  if_skip_fgmean=yes
+#  if_skip_gsimean=yes
+#  if_skip_gsimem=yes
+#  if_skip_enkf=yes
+#  if_skip_updateLBC=yes
+#  if_skip_recenter=yes
+#else
+#  if_skip_chgres=no
+#  if_skip_convobs=no
+#  if_skip_radarobs=no
+#  if_skip_fv3=no
+#  if_skip_fgmean=no
+#  if_skip_gsimean=no
+#  if_skip_gsimem=no
+#  if_skip_enkf=no
+#  if_skip_recenter=no
+#  if_skip_updateLBC=no
+#fi
+#
+#
+##
+## 0: do chgres only
+## >= 1, starting cycle 1-N
+##
+#
+#
+#if [[ $icycle -ge 1 ]]; then
+#    if_skip_chgres=yes
+#    if_gotofcst=no
+#else
+#    if_skip_chgres=no
+#    if_gotofcst=yes
+#fi
+#
 if [ ${if_skip_chgres} == 'no' ]; then
 
     mkdir -p ${LOG_DIR}
 
-    # --- run real.exe for each member
-    echo "$(date +%Y-%m-%d_%H:%M): Generate input files for each member"
-    rm -f ${DATAROOT_INI}/${INIT_DATE}_*/SUCCESS ${DATAROOT_INI}/${INIT_DATE}_*/FAILED
-
-    imem=0
     ens_size=${ENSSIZE_REAL}
 
-    rm -f ${LOG_DIR}/chgres_m*sh
-
-    cd ${LOG_DIR}
     #
-    # 1. run chgres for all members
+    # 0.1 run chgres for ICS of all members
     #
-    while [ ${imem} -le ${ens_size}  ]; do
-        memstr4=$(printf "%04d" $imem)
+    if [[ "${if_skip_ics}" == 'no' ]]; then
+      echo "$(date +%Y-%m-%d_%H:%M): Generate input files for each member"
+      rm -f ${DATAROOT_INI}/${INIT_DATE}_*/SUCCESS.ics ${DATAROOT_INI}/${INIT_DATE}_*/FAILED.ics
+      rm -f ${LOG_DIR}/chgres_ICS.sh
 
-        cat << EOF > ${LOG_DIR}/chgres_${memstr4}.sh
+      cd ${LOG_DIR}
+
+      cat << EOF > ${LOG_DIR}/chgres_ICS.sh
 #!/bin/bash
 #SBATCH -A ${ACCOUNT}
-#SBATCH -J chgres_${memstr4}
-#SBATCH -o ./jobchgres_${memstr4}_%j.out
-#SBATCH -e ./jobchgres_${memstr4}_%j.err
+#SBATCH -J chgres_ICS
+#SBATCH -o ./jobchgres_ICS_%a_%j.out
+#SBATCH -e ./jobchgres_ICS_%a_%j.err
 #SBATCH -n ${COREPERNODE}
 #SBATCH --partition=${QUEUE}
-#SBATCH -t 02:30:00
+#SBATCH -t 00:30:00
 
-  export START_TIME=${BGBEGTIME_WOF}
+export eventdate=${todaydate}
+export START_TIME=${BEG_DATE}
+export START_TIME_BG=${BGBEGTIME_HRRRE}
+export SOURCE_PATH=${HRRRE_DIR}
+export FCST_LENGTH=${FCST_LENGTH}
+export CHGRES_ROOT=${CHGRES_ROOT}
+export CHGRES_STATIC=${STATIC_DIR_CHGRES}
+export GFS_INDEX=\${SLURM_ARRAY_TASK_ID}
+export DATAHOME=${DATAROOT_INI}/${INIT_DATE}_\${SLURM_ARRAY_TASK_ID}
+export PROC=${COREPERNODE}
+export OMP_THREADS_NUM=1
+export FCST_INTERVAL=${DA_INTV}
+
+${SCRIPTS}/CHGRES/chgres_ICS.bash
+
+error=\$?
+if [ \${error} -ne 0 ]; then
+  echo "error" > \${DATAHOME}/FAILED.ics
+else
+  echo "done" > \${DATAHOME}/SUCCESS.ics
+fi
+
+EOF
+      ${showcmd} --array=1-${ens_size} ${LOG_DIR}/chgres_ICS.sh
+
+      echo "Waiting for ${DATAROOT_INI}/${INIT_DATE}_*/SUCCESS.ics ...."
+      success=()
+      checkset=( $(seq 1 ${ens_size}) )
+      while [[ ${#success[@]} -lt ${ens_size} ]]; do
+          sleep 10
+          failed=()
+          for i in "${!checkset[@]}"; do
+              mem=${checkset[$i]}
+              if [[ -f ${DATAROOT_INI}/${INIT_DATE}_${mem}/SUCCESS.ics ]]; then
+                  success+=($mem)
+                  unset checkset[$i]
+              elif [[ -f ${DATAROOT_INI}/${INIT_DATE}_${mem}/FAILED.ics ]]; then
+                  failed+=($mem)
+              fi
+          done
+
+          if [[ ${#failed[@]} -gt 0 ]]; then
+              failedstr=$(join_by , "${failed[@]}")
+              echo "Resubmitting $failedstr ..."
+              ${showcmd} --array=${failedstr} ${LOG_DIR}/chgres_ICS.sh
+          fi
+      done
+    fi
+
+    da_intv_sec=$(( 60*DA_INTV ))
+    lbcs_members=${ENSSIZE_BNDY}
+
+    #
+    # 0.2 run chgres for LBCS of all members
+    #
+    if [[ "${if_skip_lbcs}" == "no" ]]; then
+      hrrre_sec=$(date -d "${BGBEGTIME_HRRRE:0:8} ${BGBEGTIME_HRRRE:8:4}" +%s)
+
+      da_init_sec=$(date -d "${INIT_DATE:0:8}  ${INIT_DATE:8:4}" +%s)
+      da_bgn_sec=$(date -d "${BEG_DATE:0:8}  ${BEG_DATE:8:4}" +%s)
+      da_end_sec=$(date -d "${END_DATE:0:8}  ${END_DATE:8:4}" +%s)
+      fcst_bgn_sec=$((da_bgn_sec+da_intv_sec))
+      fcst_end1_sec=$((da_end_sec+3600))            # 1-hour later than DA end time for DA cycle boundary
+      fcst_end2_sec=$((da_end_sec+6*3600))          # 6-hour later than DA end time for free forecast purpose
+
+      cd ${LOG_DIR}
+      rm -f ${LOG_DIR}/chgres_LBCS_*.sh
+
+      bndy_times=()
+      da_times=()
+      #
+      # For DA cycles
+      #
+      for ((isec=fcst_bgn_sec;isec<fcst_end1_sec;isec+=da_intv_sec)); do
+          bndysec=$(( isec-hrrre_sec ))
+          fhr=$((bndysec/3600))
+          fmin=$(( (bndysec%3600)/60 ))
+          fcst_time=$(printf "%02d%02d" $fhr $fmin)
+          bndy_times+=($fcst_time)
+
+          mysec=$(( isec-da_init_sec ))
+          myhr=$(( mysec/3600 ))
+          mymin=$(( (mysec%3600)/60 ))
+          da_time=$(printf "%02d:%02d" $myhr $mymin)
+          da_times+=($da_time)
+      done
+
+      #
+      # For free forecast at the last DA cycle
+      #
+      for ((isec=fcst_end1_sec;isec<=fcst_end2_sec;isec+=3600)); do
+          #relative to $BGBEGTIME_HRRRE
+          bndysec=$(( isec-hrrre_sec ))
+          fhr=$((bndysec/3600))
+          fmin=$(( (bndysec%3600)/60 ))
+          fcst_time=$(printf "%02d%02d" $fhr $fmin)
+          bndy_times+=($fcst_time)
+
+          # relative to $INIT_DATE
+          mysec=$(( isec-da_init_sec ))
+          myhr=$(( mysec/3600 ))
+          mymin=$(( (mysec%3600)/60 ))
+          da_time=$(printf "%02d:%02d" $myhr $mymin)
+          da_times+=($da_time)
+      done
+
+      for i in "${!bndy_times[@]}"; do
+
+          fcst_time=${bndy_times[$i]}
+          da_time=${da_times[$i]}
+
+          echo "$(date +%Y-%m-%d_%H:%M): Generate LBC files at HRRRE forecast time: ${fcst_time} for each member"
+          rm -f ${DATAROOT_INI}/${INIT_DATE}_*/SUCCESS.lbc_${fcst_time} ${DATAROOT_INI}/${INIT_DATE}_*/FAILED.lbc_${fcst_time}
+
+          cat << EOF > ${LOG_DIR}/chgres_LBCS_${fcst_time}.sh
+#!/bin/bash
+#SBATCH -A ${ACCOUNT}
+#SBATCH -J LBCS_${fcst_time}
+#SBATCH -o ./jobchgres_LBCS_${fcst_time}_%a_%j.out
+#SBATCH -e ./jobchgres_LBCS_${fcst_time}_%a_%j.err
+#SBATCH -n ${COREPERNODE}
+#SBATCH --partition=${QUEUE}
+#SBATCH -t 00:30:00
+
+  export eventdate=${todaydate}
+  export START_TIME=${BEG_DATE}
   export START_TIME_BG=${BGBEGTIME_HRRRE}
   export SOURCE_PATH=${HRRRE_DIR}
   export FCST_LENGTH=${FCST_LENGTH}
   export CHGRES_ROOT=${CHGRES_ROOT}
   export CHGRES_STATIC=${STATIC_DIR_CHGRES}
-  export GFS_INDEX=${imem}
-  export DATAHOME=${DATAROOT_INI}/${INIT_DATE}_${imem}
-  export PROC=$(( 1 * ${COREPERNODE} ))
+  export GFS_INDEX=\${SLURM_ARRAY_TASK_ID}
+  export FCST_TIME=${fcst_time}
+  export DATAHOME=${DATAROOT_INI}/${INIT_DATE}_\${SLURM_ARRAY_TASK_ID}
+  export PROC=${COREPERNODE}
   export OMP_THREADS_NUM=1
   export FCST_INTERVAL=${DA_INTV}
 
-  module load netcdf/4.7.4
-
-  ${SCRIPTS}/CHGRES/chgres_cube.ksh
+  ${SCRIPTS}/CHGRES/chgres_LBCS.bash
 
   error=\$?
   if [ \${error} -ne 0 ]; then
-    echo "error" > \${DATAHOME}/FAILED
+    echo "error" > \${DATAHOME}/FAILED.lbc_${fcst_time}
   else
-    echo "done" > \${DATAHOME}/SUCCESS
+    echo "done" > \${DATAHOME}/SUCCESS.lbc_${fcst_time}
   fi
 EOF
 
-      sleep 1
+        ${showcmd} --array=1-${lbcs_members} ${LOG_DIR}/chgres_LBCS_${fcst_time}.sh
 
-      ${showcmd} ${LOG_DIR}/chgres_${memstr4}.sh
-      (( imem += 1 ))
-    done
+        echo "Waiting for ${DATAROOT_INI}/${INIT_DATE}_*/SUCCESS.lbc_${fcst_time} ...."
+        success=()
+        checkset=( $(seq 1 ${lbcs_members}) )
+        while [[ ${#success[@]} -lt ${lbcs_members} ]]; do
+            sleep 10
+            failed=()
+            for i in "${!checkset[@]}"; do
+                mem=${checkset[$i]}
+                if [[ -f ${DATAROOT_INI}/${INIT_DATE}_${mem}/SUCCESS.lbc_${fcst_time} ]]; then
+                    success+=($mem)
+                    unset checkset[$i]
+                elif [[ -f ${DATAROOT_INI}/${INIT_DATE}_${mem}/FAILED.lbc_${fcst_time} ]]; then
+                    failed+=($mem)
+                fi
+            done
 
-    success_size=`ls -1 ${DATAROOT_INI}/${INIT_DATE}_*/SUCCESS 2>/dev/null | wc -l`
-    while [ ${success_size} -le ${ens_size} ]; do
-      echo "${success_size} members run chgres successfully"
-      sleep 60
-      success_size=`ls -1 ${DATAROOT_INI}/${INIT_DATE}_*/SUCCESS 2>/dev/null | wc -l`
-    done
+            if [[ ${#failed[@]} -gt 0 ]]; then
+                failedstr=$(join_by , "${failed[@]}")
+                echo "Resubmitting $failedstr ..."
+                ${showcmd} --array=${failedstr} ${LOG_DIR}/chgres_LBCS_${fcst_time}.sh
+            fi
+        done
 
+        #
+        # 0.3 Link LBC file for other members
+        #
+        imem=$(( lbcs_members+1 ))
+        while [[ $imem -le $ens_size ]]; do
+            target_mem=$(( imem%lbcs_members ))
+            if [[ $target_mem -eq 0 ]]; then
+                target_mem=${lbcs_members}
+            fi
+            target_file="gfs_bndy.tile7.${da_time}.nc"
+
+            target_dir="${DATAROOT_INI}/${INIT_DATE}_${target_mem}/chgresprd"
+            my_dir="${DATAROOT_INI}/${INIT_DATE}_${imem}/chgresprd"
+
+            echo "Linking LBCS files at ${fcst_time} from ${target_dir} to ${my_dir} ..."
+            ln -sf ${target_dir}/${target_file}  ${my_dir}/${target_file}
+
+            let imem+=1
+        done
+      done
+    fi
 fi
+
+icycle=$istart
 
 if [ ${if_gotofcst} == 'no' ]; then
 
@@ -127,7 +470,39 @@ if [ ${if_gotofcst} == 'no' ]; then
   min=${BEG_DATE:10:2}
   beginseconds=$(date +%s -d "${ymd} ${hhr}:${min}")
 
-  while [ ${icycle} -le 99 ]; do
+  while [ ${icycle} -le $iend ]; do
+
+    #
+    # determine programs to be run
+    #
+    if [[ $icycle -eq $istart ]]; then          # first starting command from argument
+        for cmd in ${allcyclecommands[@]}; do
+            if [[ " ${commands[*]} " =~ " ${cmd} " ]]; then
+                export "if_skip_$cmd=no"
+            else
+                export "if_skip_$cmd=yes"
+            fi
+        done
+    else                                        # run all DA cycle commands for all following cycles
+        for cmd in ${allcyclecommands[@]}; do
+            export "if_skip_$cmd=no"
+        done
+    fi
+
+    #echo "$istart, $iend, $icycle"
+    #echo "${commands[@]}"
+    #echo "if_skip_chgres=        $if_skip_chgres"
+    #echo "if_skip_convobs=       $if_skip_convobs"
+    #echo "if_skip_radarobs=      $if_skip_radarobs"
+    #echo "if_skip_fv3=           $if_skip_fv3"
+    #echo "if_skip_fgmean=        $if_skip_fgmean"
+    #echo "if_skip_gsimean=       $if_skip_gsimean"
+    #echo "if_skip_gsimem=        $if_skip_gsimem"
+    #echo "if_skip_enkf=          $if_skip_enkf"
+    #echo "if_skip_recenter=      $if_skip_recenter"
+    #echo "if_skip_updateLBC=     $if_skip_updateLBC"
+    #
+    #exit 0
 
     secfrombeg=$(( DA_INTV*icycle*60 ))
     thisinseconds=$(( beginseconds + secfrombeg ))
@@ -165,7 +540,7 @@ if [ ${if_gotofcst} == 'no' ]; then
     #
     if [ ${thiscycle} -gt ${END_DATE} ]; then
       echo "$(date +%Y-%m-%d_%H:%M): DA finished !"
-      break
+      exit 0
     fi
 
     if [ ${if_skip_convobs} == 'no' ]; then
@@ -177,20 +552,54 @@ if [ ${if_gotofcst} == 'no' ]; then
       ${SCRIPTS}/GSI/conventional.ksh
     fi
 
-    if [ ${if_skip_radarobs} == 'no' ]; then
-      echo "$(date +%Y-%m-%d_%H:%M): Copy radar obs. for cycle ${thiscycle}"
-      export START_TIME=${thiscycle}
-      export SUBH_TIME="00"
-      export DATAHOME=${DATABASE_DIR}/cycle/${thiscycle}/obsprd
-      export NSSLMOSAICNC=${RADAR_DIR}
-      export GSIEXEC=${GSI_ROOT}
-      ${SCRIPTS}/GSI/radar_cp.ksh
-    fi
-
     SBATCHSELLDIR=${DATABASE_DIR}/cycle/${thiscycle}/shdir
     mkdir -p ${SBATCHSELLDIR}
 
     cd ${SBATCHSELLDIR}
+
+    if [ ${if_skip_radarobs} == 'no' ]; then
+      echo "$(date +%Y-%m-%d_%H:%M): Copy radar obs. for cycle ${thiscycle}"
+      #${SCRIPTS}/GSI/radar_cp.ksh
+      cat << EOF > ${SBATCHSELLDIR}/radar_cp_${thiscycle}.sh
+#!/bin/bash
+#SBATCH -A ${ACCOUNT}
+#SBATCH -J radar_cp_${thiscycletime}
+#SBATCH -o ./jobradar_cp_${thiscycle}_%j.out
+#SBATCH -e ./jobradar_cp_${thiscycle}_%j.err
+#SBATCH -n 1
+#SBATCH --partition=${QUEUE}
+#SBATCH -t 00:30:00
+
+export START_TIME=${thiscycle}
+export SUBH_TIME="00"
+export DATAHOME=${DATABASE_DIR}/cycle/${thiscycle}/obsprd
+export NSSLMOSAICNC=${RADAR_DIR}
+export GSIEXEC=${GSI_ROOT}
+
+${SCRIPTS}/GSI/radar_cp.ksh
+
+error=\$?
+if [ \${error} -ne 0 ]; then
+  echo "" > \${DATAHOME}/FAILED_radar_cp
+else
+  echo "" > \${DATAHOME}/SUCCESS_radar_cp
+fi
+
+EOF
+        sleep 1
+        sbatch ${SBATCHSELLDIR}/radar_cp_${thiscycle}.sh
+
+        echo "Waiting for ${DATABASE_DIR}/cycle/${thiscycle}/obsprd/SUCCESS_radar_cp ...."
+        while [ ! -e "${DATABASE_DIR}/cycle/${thiscycle}/obsprd/SUCCESS_radar_cp" ]; do
+            if [[ -e "${DATABASE_DIR}/cycle/${thiscycle}/obsprd/FAILED_radar_cp" ]]; then
+                echo "${SCRIPTS}/GSI/radar_cp.ksh failed."
+                exit 1
+            else
+                sleep 20
+            fi
+        done
+    fi
+
 
     if [ ${if_skip_fv3} == 'no' ]; then
 
@@ -224,8 +633,9 @@ if [ ${if_gotofcst} == 'no' ]; then
 #SBATCH -e ./jobfv3_${lastcycletime}-${memstr4}_%j.err
 #SBATCH -n ${corenum}
 #SBATCH --partition=${QUEUE}
-#SBATCH -t 02:30:00
+#SBATCH -t 00:30:00
 
+  export eventdate=${todaydate}
   export INIT_TIME=${INIT_DATE}
   export START_TIME=${lastcycle}
   export FCST_LENGTH=${FCST_LENG}
@@ -237,6 +647,7 @@ if [ ${if_gotofcst} == 'no' ]; then
   export ENS_MEM_START=${imem}
   export ENS_MEMNUM_THIS=1
   export PROC=${corenum}
+  export CCPP_SUITE=${CCPP_SUITE}
 
   rm -f \${DATAHOME}/${lastcycle}/fv3prd_mem${memstr4}/FAILED \${DATAHOME}/${lastcycle}/fv3prd_mem${memstr4}/SUCCESS
 
@@ -256,20 +667,52 @@ EOF
         (( imem += 1 ))
       done
 
-
-      success_size=`ls -1 ${DATABASE_DIR}/cycle/${lastcycle}/fv3prd_mem*/SUCCESS 2>/dev/null | wc -l`
       echo "Waiting for ${DATABASE_DIR}/cycle/${lastcycle}/fv3prd_mem*/SUCCESS ...."
-      while [ ${success_size} -lt ${ENSSIZE_REAL} ]; do
-          #echo "${success_size} members run FV3 successfully"
+      success=()
+      checkset=( $(seq 1 ${ENSSIZE_REAL}) )
+      while [[ ${#success[@]} -lt ${ENSSIZE_REAL} ]]; do
           sleep 10
-          fail_size=`ls -1 ${DATABASE_DIR}/cycle/${lastcycle}/fv3prd_mem*/FAILED 2>/dev/null | wc -l`
-          while [ ${fail_size} -gt 0 ]; do
-            echo "${fail_size} members FV3 failed."
-            exit 1
-            #sleep 60
-            #fail_size=`ls -1 ${DATABASE_DIR}/cycle/${lastcycle}/fv3prd_mem*/FAILED 2>/dev/null | wc -l`
+          failed=()
+          for i in "${!checkset[@]}"; do
+              mem=${checkset[$i]}
+              memstr4=$(printf "%04d" ${mem})
+              if [[ -f ${DATABASE_DIR}/cycle/${lastcycle}/fv3prd_mem${memstr4}/SUCCESS ]]; then
+                  success+=($mem)
+                  unset checkset[$i]
+              elif [[ -f ${DATABASE_DIR}/cycle/${lastcycle}/fv3prd_mem${memstr4}/FAILED ]]; then
+                  failed+=($mem)
+              fi
           done
-          success_size=`ls -1 ${DATABASE_DIR}/cycle/${lastcycle}/fv3prd_mem*/SUCCESS 2>/dev/null | wc -l`
+
+          #for i in "${!checkset[@]}"; do
+          #    mem=${checkset[$i]}
+          #    memstr4=$(printf "%04d" ${mem})
+          #    jobreturn=( $(sacct --name "fv3_${lastcycletime}-$memstr4" -n -o "JobName%-30,State" -X) )
+          #    jobname=${jobreturn[0]}
+          #    jobstatus=${jobreturn[1]}
+          #    case ${jobstatus} in
+          #        TIMEOUT )
+          #            failed+=($mem)
+          #            ;;
+          #        PENDING|RUNNING|COMPLETED )
+          #            continue
+          #            ;;
+          #        * )
+          #            echo "$jobname for $mem has status <$jobstatus>. Exiting ..."
+          #            exit 1
+          #            ;;
+          #    esac
+          #done
+
+          if [[ ${#failed[@]} -gt 0 ]]; then
+              for mem in ${failed[@]}; do
+                  memstr4=$(printf "%04d" ${mem})
+                  jobscript="${SBATCHSELLDIR}/fv3_${lastcycletime}_${memstr4}.sh"
+                  rm -rf ${DATABASE_DIR}/cycle/${lastcycle}/fv3prd_mem${memstr4}/FAILED
+                  echo "Resubmitting $jobscript ..."
+                  ${showcmd} $jobscript
+              done
+          fi
       done
 
     fi
@@ -416,42 +859,12 @@ EOF
   export ENSEMBLE_SIZE=${ENSSIZE_REAL}
   export GSI_ROOT=${GSI_ROOT}
   export STATIC_DIR_GSI=${STATIC_DIR_GSI}
-  export GSIPROC=68
   export ANALYSIS_TIME=${thiscycle}
   export WORK_ROOT=\${DATAHOME}/\${ANALYSIS_TIME}
-  export NUM_DOMAINS=1
   export CONV_RADAR=0
   export RADAR_ONLY=${if_radar}
   export CONV_ONLY=${if_conv}
   export PROC=${corenum}
-  export OMP_THREADS_NUM=2
-
-  # Jet environment specific
-  source /etc/profile.d/modules.sh
-  module purge
-  module load cmake/3.16.1
-  module load intel/18.0.5.274
-  module load impi/2018.4.274
-  module load netcdf/4.7.0 #don't load netcdf/4.7.4 from hpc-stack, GSI does not compile with it.
-
-  module use /lfs4/HFIP/hfv3gfs/nwprod/hpc-stack/libs/modulefiles/stack
-  module load hpc/1.1.0
-  module load hpc-intel/18.0.5.274
-  module load hpc-impi/2018.4.274
-  module load bufr/11.4.0
-  module load bacio/2.4.1
-  module load crtm/2.3.0
-  module load ip/3.3.3
-  module load nemsio/2.5.2
-  module load sp/2.3.3
-  module load w3emc/2.7.3
-  module load w3nco/2.4.1
-  module load sfcio/1.4.1
-  module load sigio/2.3.2
-  module load wrf_io/1.2.0
-  module load szip
-  export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/apps/szip/2.1/lib
-  # End of Jet environment
 
   rm -f \${DATAHOME}/${thiscycle}/${gsiprdname}/gsimeanFAILED \${DATAHOME}/${thiscycle}/${gsiprdname}/gsimeanSUCCESS
 
@@ -492,10 +905,12 @@ EOF
 
             memstr4=$(printf "%04d" ${imem})
 
-            echo 'Member-'${imem}
+            #echo 'Member-'${imem}
 
             rm -f ${DATABASE_DIR}/cycle/${thiscycle}/${gsiprdname}/FAILED_${imem}
             rm -f ${DATABASE_DIR}/cycle/${thiscycle}/${gsiprdname}/SUCCESS_${imem}
+
+            declare -A jobs_gsi_mem
 
             cat << EOF > ${SBATCHSELLDIR}/gsi_mem${thiscycle}_${memstr4}_${conv_radar_flag}.sh
 #!/bin/bash
@@ -505,7 +920,7 @@ EOF
 #SBATCH -e ./jobgsi_mem${thiscycle}_${memstr4}_${conv_radar_flag}_%j.err
 #SBATCH -n ${corenum}
 #SBATCH --partition=${QUEUE}
-#SBATCH -t 02:30:00
+#SBATCH -t 00:15:00
 
   export DATAHOME=${DATABASE_DIR}/cycle
   export ENS_MEM_START=${imem}
@@ -513,42 +928,12 @@ EOF
   export ENSEMBLE_SIZE=${ENSSIZE_REAL}
   export GSI_ROOT=${GSI_ROOT}
   export STATIC_DIR_GSI=${STATIC_DIR_GSI}
-  export GSIPROC=68
   export ANALYSIS_TIME=${thiscycle}
   export WORK_ROOT=\${DATAHOME}/\${ANALYSIS_TIME}
-  export NUM_DOMAINS=1
-  export CONV_RADAR=0
   export RADAR_ONLY=${if_radar}
   export CONV_ONLY=${if_conv}
   export PROC=${corenum}
   export OMP_THREADS_NUM=2
-
-  # Jet environment specific
-  source /etc/profile.d/modules.sh
-  module purge
-  module load cmake/3.16.1
-  module load intel/18.0.5.274
-  module load impi/2018.4.274
-  module load netcdf/4.7.0 #don't load netcdf/4.7.4 from hpc-stack, GSI does not compile with it.
-
-  module use /lfs4/HFIP/hfv3gfs/nwprod/hpc-stack/libs/modulefiles/stack
-  module load hpc/1.1.0
-  module load hpc-intel/18.0.5.274
-  module load hpc-impi/2018.4.274
-  module load bufr/11.4.0
-  module load bacio/2.4.1
-  module load crtm/2.3.0
-  module load ip/3.3.3
-  module load nemsio/2.5.2
-  module load sp/2.3.3
-  module load w3emc/2.7.3
-  module load w3nco/2.4.1
-  module load sfcio/1.4.1
-  module load sigio/2.3.2
-  module load wrf_io/1.2.0
-  module load szip
-  export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/apps/szip/2.1/lib
-  # End of Jet environment
 
   rm -f \${DATAHOME}/${thiscycle}/${gsiprdname}/FAILED_${imem}
   rm -f \${DATAHOME}/${thiscycle}/${gsiprdname}/SUCCESS_${imem}
@@ -563,33 +948,90 @@ EOF
   fi
 
 EOF
-            sbatch ${SBATCHSELLDIR}/gsi_mem${thiscycle}_${memstr4}_${conv_radar_flag}.sh
+            jobreturn=$(sbatch ${SBATCHSELLDIR}/gsi_mem${thiscycle}_${memstr4}_${conv_radar_flag}.sh)
+            jobs_gsi_mem[$memstr4]=${jobreturn##* }
+            echo "Member-${imem}, $jobreturn"
 
             (( imem += 1 ))
           done
 
-          echo "waiting for ${DATABASE_DIR}/cycle/${thiscycle}/${gsiprdname}/SUCCESS_1 ..."
-          while [[ ! -e ${DATABASE_DIR}/cycle/${thiscycle}/${gsiprdname}/SUCCESS_1 ]]; do
-              sleep 20
-          done
+          echo "Waiting for ${DATABASE_DIR}/cycle/${thiscycle}/${gsiprdname}/SUCCESS_* ..."
+          #while [[ ! -e ${DATABASE_DIR}/cycle/${thiscycle}/${gsiprdname}/SUCCESS_1 ]]; do
+          #    sleep 20
+          #done
 
           success=()
           while [[ ${#success[@]} -lt ${ens_size} ]]; do
-              echo "success=[${success[@]}]"
-              echo "failed=[${failed[@]}]"
-              echo "running=[${running[@]}]"
-
               sleep 10
-              for imem in $(seq 1 ${ens_size}); do
-                if [[ -e ${DATABASE_DIR}/cycle/${thiscycle}/${gsiprdname}/SUCCESS_$imem ]]; then
-                  success+=($imem)
-                elif [[ -e ${DATABASE_DIR}/cycle/${thiscycle}/${gsiprdname}/FAILED_$imem ]]; then
-                  failed+=($imem)
-                else
-                  running+=($imem)
-                fi
+              #failed=()
+              for mem in "${!jobs_gsi_mem[@]}"; do
+                  jobid=${jobs_gsi_mem[$mem]}
+                  jobreturn=( $(sacct -j $jobid -n -o "JobName%-30,State" -X) )
+                  jobname=${jobreturn[0]}
+                  jobstatus=${jobreturn[1]}
+
+                  case ${jobstatus} in
+                      TIMEOUT )
+                          #failed+=($mem)
+                          jobscript=${SBATCHSELLDIR}/gsi_mem${thiscycle}_${mem}_${conv_radar_flag}.sh
+                          echo "Resubmitting ${jobscript} ......"
+                          jobreturn=$(sbatch ${jobscript})
+                          jobs_gsi_mem[$mem]=${jobreturn##* }
+                          ;;
+                      COMPLETED )
+                          success+=($mem)
+                          unset jobs_gsi_mem[$mem]
+                          ;;
+                      PENDING|RUNNING )
+                          continue
+                          ;;
+                      * )
+                          echo "$jobname for $mem has status <$jobstatus>. Exiting ..."
+                          exit 1
+                          ;;
+                  esac
               done
+
           done
+
+
+          #success=()
+          #while [[ ${#success[@]} -lt ${ens_size} ]]; do
+          #    #echo "running=[${running[@]}]"
+          #
+          #    sleep 10
+          #    success=()
+          #    failed=()
+          #    running=()
+          #    for imem in $(seq 1 ${ens_size}); do
+          #      if [[ -e ${DATABASE_DIR}/cycle/${thiscycle}/${gsiprdname}/SUCCESS_$imem ]]; then
+          #        success+=($imem)
+          #      elif [[ -e ${DATABASE_DIR}/cycle/${thiscycle}/${gsiprdname}/FAILED_$imem ]]; then
+          #        failed+=($imem)
+          #      else
+          #        running+=($imem)
+          #      fi
+          #    done
+          #
+          #    if [[ ${#success[@]} -gt 0 ]]; then  # at lest one is done
+          #      if [[ ${#running[@]} -gt 0 || ${#failed[@]} -gt 0 ]]; then
+          #          #echo "success=[${success[@]}]"
+          #          members=( ${failed[*]} ${running[*]} )
+          #          echo "failed/running = [${members[@]}]"
+          #          for imem in ${members[@]}; do
+          #              memstr4=$(printf "%04d" ${imem})
+          #              if compgen -G "${SBATCHSELLDIR}/jobgsi_mem${thiscycle}_${memstr4}_${conv_radar_flag}_*.err" > /dev/null; then
+          #                    joberrfs=($(ls ${SBATCHSELLDIR}/jobgsi_mem${thiscycle}_${memstr4}_${conv_radar_flag}_*.err))
+          #                    if grep -q "DUE TO TIME LIMIT" "${joberrfs[-1]}"; then
+          #                        echo "Resubmitting $imem ...."
+          #                        sbatch ${SBATCHSELLDIR}/gsi_mem${thiscycle}_${memstr4}_${conv_radar_flag}.sh
+          #                    fi
+          #              fi
+          #          done
+          #      fi
+          #    fi
+          #done
+
           #successcnt=$(ls ${DATABASE_DIR}/cycle/${thiscycle}/${gsiprdname}/SUCCESS_* | wc -l)
           #echo "waiting for ${DATABASE_DIR}/cycle/${thiscycle}/${gsiprdname}/SUCCESS_* ..."
           #while [[ $successcnt -lt ${ens_size} ]]; do
@@ -618,11 +1060,11 @@ EOF
 
   export GSI_ROOT=${GSI_ROOT}
   export ANALYSIS_TIME=${thiscycle}
-  export HOME_ROOT=${DATABASE_DIR}/cycle
-  export WORK_ROOT=\${HOME_ROOT}/\${ANALYSIS_TIME}
-  export DOMAIN=1
+  #export HOME_ROOT=${DATABASE_DIR}/cycle
+  export WORK_ROOT=${DATABASE_DIR}/cycle/\${ANALYSIS_TIME}
+  #export DOMAIN=1
   export ENSEMBLE_SIZE=${ENSSIZE_REAL}
-  export ENS_MEMNUM_THIS=1
+  #export ENS_MEMNUM_THIS=1
   export NLONS=${nlon}
   export NLATS=${nlat}
   export NLEVS=${nlev}
@@ -632,36 +1074,9 @@ EOF
   export IF_RH=${if_rh}
   #export BEGPROC=5600
   export PROC=${TASKNUM_enkf}
-  export OMP_NUM_THREADS=${OMPTHREADS_enkf}
+  #export OMP_NUM_THREADS=${OMPTHREADS_enkf}
   #export IBRUN_TASKS_PER_NODE=$(( 56 / ${OMPTHREADS_enkf} ))
 
-  # Jet environment specific
-  source /etc/profile.d/modules.sh
-  module purge
-  module load cmake/3.16.1
-  module load intel/18.0.5.274
-  module load impi/2018.4.274
-  module load netcdf/4.7.0 #don't load netcdf/4.7.4 from hpc-stack, GSI does not compile with it.
-
-  module use /lfs4/HFIP/hfv3gfs/nwprod/hpc-stack/libs/modulefiles/stack
-  module load hpc/1.1.0
-  module load hpc-intel/18.0.5.274
-  module load hpc-impi/2018.4.274
-  module load bufr/11.4.0
-  module load bacio/2.4.1
-  module load crtm/2.3.0
-  module load ip/3.3.3
-  module load nemsio/2.5.2
-  module load sp/2.3.3
-  module load w3emc/2.7.3
-  module load w3nco/2.4.1
-  module load sfcio/1.4.1
-  module load sigio/2.3.2
-  module load wrf_io/1.2.0
-  module load szip
-  module load nco/4.9.3
-  export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/apps/szip/2.1/lib
-  # End of Jet environment
 
   rm -f \${WORK_ROOT}/enkfFAILED \${WORK_ROOT}/enkfSUCCESS
 
@@ -715,19 +1130,19 @@ EOF
       cat << EOF > ${SBATCHSELLDIR}/recent${thiscycle}.sh
 #!/bin/bash
 #SBATCH -A ${ACCOUNT}
-#SBATCH -J recent${thiscycle}
+#SBATCH -J recent_${thiscycletime}
 #SBATCH -o ./jobrecent${thiscycle}_%j.out
 #SBATCH -e ./jobrecent${thiscycle}_%j.err
 #SBATCH -n 48
 #SBATCH --partition=${QUEUE1}
-#SBATCH -t 02:30:00
+#SBATCH -t 00:30:00
 
   export DATAHOME=${DATABASE_DIR}/cycle
   export GSI_ROOT=${GSI_ROOT}
   export ENSEMBLE_SIZE=${ENSSIZE_REAL}
   export ANALYSIS_TIME=${thiscycle}
   export WORK_ROOT=\${DATAHOME}/\${ANALYSIS_TIME}
-  export NUM_DOMAINS=1
+  #export NUM_DOMAINS=1
   export NVAR=${NVARNUM}
   export PROC=48
 
@@ -759,7 +1174,7 @@ EOF
       # --- run LBC update for each member
       echo "$(date +%Y-%m-%d_%H:%M): Generate updated BC files for each member"
 
-      imem=0
+      imem=1
       ens_size=${ENSSIZE_REAL}
       while [ ${imem} -le ${ens_size}  ]; do
         memstr4=$(printf "%04d" $imem)
@@ -775,7 +1190,7 @@ EOF
 #SBATCH -e ./moveda${thiscycletime}_${memstr4}_%j.err
 #SBATCH -n 1
 #SBATCH --partition=${QUEUE}
-#SBATCH -t 02:30:00
+#SBATCH -t 00:30:00
 
   export START_TIME=${thiscycle}
   export GSI_ROOT=${GSI_ROOT}
@@ -783,7 +1198,7 @@ EOF
   export WORK_ROOT=\${HOME_ROOT}/\${START_TIME}/movedaprd/movedaprd_${imem}
   export MEM_INDEX=${imem}
   export PROC=1
-  export OMP_THREADS_NUM=1
+  #export OMP_THREADS_NUM=1
 
   rm -f \${WORK_ROOT}/FAILED \${WORK_ROOT}/SUCCESS
 

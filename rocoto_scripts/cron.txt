@@ -1,0 +1,30 @@
+SHELL=/bin/bash
+
+MAILTO=Yunheng.Wang@noaa.gov
+
+# Example of job definition:
+# .---------------- minute (0 - 59)
+# |  .------------- hour (0 - 23)
+# |  |  .---------- day of month (1 - 31)
+# |  |  |  .------- month (1 - 12) OR jan,feb,mar,apr ...
+# |  |  |  |  .---- day of week (0 - 6) (Sunday=0 or 7) OR sun,mon,tue,wed,thu,fri,sat
+# |  |  |  |  |
+# *  *  *  *  * command to be executed
+
+# use UTC
+
+dawflow=/lfs4/NAGAPE/hpc-wof1/ywang/EPIC2/oumap/da-forecast-workflow/rocoto_scripts/da_cycles.xml
+dadb=/lfs4/NAGAPE/hpc-wof1/ywang/EPIC2/oumap/da-forecast-workflow/rocoto_scripts/da_cycles_20200513.db
+
+fcstwflow=/lfs4/NAGAPE/hpc-wof1/ywang/EPIC2/oumap/da-forecast-workflow/rocoto_scripts/da_forecast.xml
+fcstdb=/lfs4/NAGAPE/hpc-wof1/ywang/EPIC2/oumap/da-forecast-workflow/rocoto_scripts/da_fcst_20200513.db
+
+#########################################################################
+####                  DA cycles                                       ###
+#########################################################################
+10 *        29,30,1 * * /apps/rocoto/default/bin/rocotorun -w $dawflow -d $dadb
+
+########################################################################
+###                  Free forecasts                                  ###
+########################################################################
+25 *        29,30,1 * * /apps/rocoto/default/bin/rocotorun -w $fcstwflow -d $fcstdb

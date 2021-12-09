@@ -1,5 +1,33 @@
 #!/bin/ksh --login
 
+# Jet environment specific
+source /etc/profile.d/modules.sh
+module purge
+module load cmake/3.16.1
+module load intel/18.0.5.274
+module load impi/2018.4.274
+module load netcdf/4.7.0 #don't load netcdf/4.7.4 from hpc-stack, GSI does not compile with it.
+
+module use /lfs4/HFIP/hfv3gfs/nwprod/hpc-stack/libs/modulefiles/stack
+module load hpc/1.1.0
+module load hpc-intel/18.0.5.274
+module load hpc-impi/2018.4.274
+module load bufr/11.4.0
+module load bacio/2.4.1
+module load crtm/2.3.0
+module load ip/3.3.3
+module load nemsio/2.5.2
+module load sp/2.3.3
+module load w3emc/2.7.3
+module load w3nco/2.4.1
+module load sfcio/1.4.1
+module load sigio/2.3.2
+module load wrf_io/1.2.0
+module load szip
+module load nco/4.9.3
+export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/apps/szip/2.1/lib
+# End of Jet environment
+
 export OMP_STACKSIZE=256M
 
 RM=/bin/rm
@@ -56,11 +84,7 @@ if [ ! "${WORK_ROOT}" ]; then
 fi
 echo "WORK_ROOT = ${WORK_ROOT}"
 
-if [ ! "${DOMAIN}" ]; then
-  echo "ERROR: \$DOMAIN is not defined!"
-  exit 1
-fi
-echo "DOMAIN = ${DOMAIN}"
+DOMAIN=1
 
 if [ ! "${ENSEMBLE_SIZE}" ]; then
   echo "ERROR: \$ENSEMBLE_SIZE is not defined!"
@@ -283,6 +307,8 @@ if [ ${RADAR_ONLY} -eq 1 ]; then
     cp -f ${ENKF_STATIC}/anavinfo_fv3_enkf_radar ./anavinfo
 fi
 
+IF_RH=0
+
 if [ ${IF_RH} -eq 1 ]; then
   pseudo_rh='.true.'
 else
@@ -353,17 +379,17 @@ done
 # Provide signal to next process                  #
 ###################################################
 
-if [ -e ${HOME_ROOT}/${ANALYSIS_TIME}/obsprd/${ANALYSIS_TIME} ]; then
+if [ -e ${WORK_ROOT}/obsprd/${ANALYSIS_TIME} ]; then
    if [ ${CONV_ONLY} -eq 1 ]; then
-     ${ECHO} "" > ${HOME_ROOT}/${ANALYSIS_TIME}/READY_RADAR_DA
-     ${ECHO} "" > ${HOME_ROOT}/${ANALYSIS_TIME}/EnKF_DONE_CONV
+     ${ECHO} "" > ${WORK_ROOT}/READY_RADAR_DA
+     ${ECHO} "" > ${WORK_ROOT}/EnKF_DONE_CONV
    else
      ${ECHO} "" > enkf_finished
-     ${ECHO} "" > ${HOME_ROOT}/${ANALYSIS_TIME}/EnKF_DONE_RADAR
+     ${ECHO} "" > ${WORK_ROOT}/EnKF_DONE_RADAR
    fi
 else
    ${ECHO} "" > enkf_finished
-   ${ECHO} "" > ${HOME_ROOT}/${ANALYSIS_TIME}/EnKF_DONE_CONV
+   ${ECHO} "" > ${WORK_ROOT}/EnKF_DONE_CONV
 fi
 
 ${ECHO} "run_enkf_wrf.ksh terminated at `${DATE}`"

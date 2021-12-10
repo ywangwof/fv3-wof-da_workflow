@@ -345,7 +345,7 @@ EOF
         comgsi_namelist1=$comgsi_namelist_radar
      fi
 
-cat << EOF > gsiparm.anl
+     cat << EOF > gsiparm.anl
 
  $comgsi_namelist1
 

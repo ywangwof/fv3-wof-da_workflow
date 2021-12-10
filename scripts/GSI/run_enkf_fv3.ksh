@@ -263,14 +263,14 @@ echo "Merge fv3sar_tile1_ensmean_dynvar and fv3sar_tile1_ensmean_tracer to fv3sa
 ${CP} fv3sar_tile1_ensmean_dynvar fv3sar_tile1_ensmean_dynvartracer
 ncks -A fv3sar_tile1_ensmean_tracer fv3sar_tile1_ensmean_dynvartracer
 
-for ((imen=1;imem<=$NMEM_ENKF;imem++)); do
+for ((imem=1;imem<=$NMEM_ENKF;imem++)); do
     member=$(printf "%03d" $imem)
     filename="fv3sar_tile1_mem${member}_dynvartracer"
-    fizesize=$(stat -c%s "$filename")
-    while [[ $filesize -lt 7270000000 ]];do
+    filesize=$(stat -c %s $filename)
+    while [[ $filesize -lt 727000000 ]];do
         echo "waiting for $filename to be ready ...."
         sleep 10
-        fizesize=$(stat -c%s "$filename")
+        filesize=$(stat -c %s $filename)
     done
 done
 

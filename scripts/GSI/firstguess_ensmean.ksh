@@ -145,8 +145,12 @@ do
   (( varnum = varnum + 1 ))
 done
 
+tracers_HRRR=(W liq_wat rainwat ice_wat snowwat graupel ref_f3d)
+tracers_NSSL=(W liq_wat rainwat ice_wat snowwat graupel hailwat ref_f3d)
+eval tracers=\( \${tracers_${CCPP_SUITE}[@]} \)
+
 if [ ${NVAR} -gt 7 ]; then
-for varname in `echo W liq_wat rainwat ice_wat snowwat graupel ref_f3d`
+for varname in ${tracers[@]}
 do
   if [ ${varname} == 'W' ]; then
     ftail='dynvar'

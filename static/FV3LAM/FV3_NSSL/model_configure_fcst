@@ -9,7 +9,7 @@ start_second:            0
 nhours_fcst:             _FCSTLEN_
 RUN_CONTINUE:            .false.
 ENS_SPS:                 .false.
-dt_atmos:                36
+dt_atmos:                20
 cpl:                     .false.
 calendar:                'julian'
 memuse_verbose:          .false.
@@ -52,4 +52,4 @@ lon1: -103.06724146086094
 nfhout:                  1              # Output frequency in hours after forecast hour "nfhmax_hf"
 nfhmax_hf:               60             # Number of forecast hours until output frequency "nfhout" takes affect
 nfhout_hf:               1              # Output frequency in hours until forecast hour "nfhmax_hf"
-nsout:                   25             # Output frequency in time steps (positive values override "nfhout" and "nfhout_hf")
+nsout:                   45             # Output frequency in time steps (positive values override "nfhout" and "nfhout_hf")

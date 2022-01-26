@@ -11,7 +11,10 @@
      blocksize = 39
      chksum_debug = .false.
      dycore_only = .false.
-     fdiag = 1
+     fdiag = 0.25
+     fhmax = 3
+     fhmaxhf = 0
+     fhout = 0.25
      ccpp_suite = 'FV3_RRFS_v1nssl_lsmnoah'
      avg_max_length = 3600.
 /
@@ -43,7 +46,7 @@
        npy      = 351
        ntiles   = 1,
        npz_type = ''
-       npz    = 62
+       npz    = 60
        !grid_type = -1
        make_nh = _MAKE_NH_
        fv_debug = .F.
@@ -135,7 +138,7 @@
 
  &external_ic_nml
        filtered_terrain = .true.
-       levp = 63
+       levp = 65
        gfs_dwinds = .true.
        checker_tr = .F.
        nt_checker = 0

@@ -1,11 +1,11 @@
-20190521.00Z.C3341.32bit.non-hydro.regional
-2019 05 21 00 00 00
+_YEAR__MON__DAY_._HOUR_.C3341.32bit.non-hydro.regional
+_YEAR_ _MON_ _DAY_ _HOUR_ _MIN_ 00
 
 "grid_spec",              -1,  "months",  1, "days",  "time"
 "atmos_static",           -1,  "hours",   1, "hours", "time"
 #"atmos_4xdaily",          1,  "hours",   1, "days",  "time"
-"fv3_history",            5,  "minutes",   1, "minutes", "time"
-"fv3_history2d",          5,  "minutes",   1, "minutes", "time"
+#"fv3_history",            -1,  "hours",   1, "hours", "time"
+#"fv3_history2d",          -1,  "hours",   1, "hours", "time"
 
 #
 #=======================

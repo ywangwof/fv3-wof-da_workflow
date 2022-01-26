@@ -796,6 +796,7 @@ EOF
   export NVAR=${NVARNUM1}
   export IF_CONV=${if_conv}
   export PROC=48
+  export CCPP_SUITE=${CCPP_SUITE}
 
   rm -f \${DATAHOME}/${thiscycle}/ensmeanFAILED \${DATAHOME}/${thiscycle}/ensmeanSUCCESS
 
@@ -865,6 +866,7 @@ EOF
   export RADAR_ONLY=${if_radar}
   export CONV_ONLY=${if_conv}
   export PROC=${corenum}
+  export CCPP_SUITE=${CCPP_SUITE}
 
   rm -f \${DATAHOME}/${thiscycle}/${gsiprdname}/gsimeanFAILED \${DATAHOME}/${thiscycle}/${gsiprdname}/gsimeanSUCCESS
 
@@ -1076,7 +1078,7 @@ EOF
   export PROC=${TASKNUM_enkf}
   #export OMP_NUM_THREADS=${OMPTHREADS_enkf}
   #export IBRUN_TASKS_PER_NODE=$(( 56 / ${OMPTHREADS_enkf} ))
-
+  export CCPP_SUITE=${CCPP_SUITE}
 
   rm -f \${WORK_ROOT}/enkfFAILED \${WORK_ROOT}/enkfSUCCESS
 
@@ -1145,6 +1147,7 @@ EOF
   #export NUM_DOMAINS=1
   export NVAR=${NVARNUM}
   export PROC=48
+  export CCPP_SUITE=${CCPP_SUITE}
 
   rm -f \${WORK_ROOT}/recentFAILED \${WORK_ROOT}/recentSUCCESS
 

@@ -38,7 +38,7 @@
     checker_tr = .false.
     filtered_terrain = .true.
     gfs_dwinds = .true.
-    levp = 63
+    levp = 65
     nt_checker = 0
 /
 
@@ -108,7 +108,7 @@
     !nord_zs_filter = 4
     npx = 351
     npy = 351
-    npz = 62
+    npz = 60
     ntiles = 1
     nudge_qv = .false.
     nwat = 6

@@ -9,7 +9,7 @@ start_second:            0
 nhours_fcst:             _FCSTLEN_
 RUN_CONTINUE:            .false.
 ENS_SPS:                 .false.
-dt_atmos:                36
+dt_atmos:                20
 cpl:                     .false.
 calendar:                'julian'
 memuse_verbose:          .false.

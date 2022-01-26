@@ -221,7 +221,7 @@ while [[ $ensmem -lt $end_member ]];do
 
  # --- Others
  ${CP} -f ${FV3LAM_STATIC}/FV3_${CCPP_SUITE}/data_table .
- ${CP} -f ${FV3LAM_STATIC}/FV3_${CCPP_SUITE}/diag_table .
+ ${CP} -f ${FV3LAM_STATIC}/FV3_${CCPP_SUITE}/diag_table_fcst diag_table
  ${CP} -f ${FV3LAM_STATIC}/FV3_${CCPP_SUITE}/field_table .
  ${CP} -f ${FV3LAM_STATIC}/freezeH2O.dat .
  ${CP} -f ${FV3LAM_STATIC}/qr_acr_qg.dat .
@@ -229,6 +229,8 @@ while [[ $ensmem -lt $end_member ]];do
  ${CP} -f ${FV3LAM_STATIC}/qr_acr_qgV2.dat .
  ${CP} -f ${FV3LAM_STATIC}/qr_acr_qsV2.dat .
  ${CP} -f ${FV3LAM_STATIC}/FV3_${CCPP_SUITE}/nems.configure .
+
+ sed -i -e "s/_YEAR_/${start_year}/;s/_MON_/${start_month}/;s/_DAY_/${start_day}/;s/_HOUR_/${start_hour}/;s/_MIN_/${start_minute}/" diag_table
 
  if [ ${COLD_START} -eq 1 ]; then
    make_nh='.true.'

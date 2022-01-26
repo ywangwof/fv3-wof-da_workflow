@@ -85,7 +85,7 @@
   # ---
   nlon=356
   nlat=356
-  nlev=62
+  nlev=60
 
   # --- DA conf.
   # ---

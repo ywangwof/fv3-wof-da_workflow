@@ -43,7 +43,7 @@
        npy      = 351
        ntiles   = 1,
        npz_type = ''
-       npz    = 62
+       npz    = 60
        !grid_type = -1
        make_nh = _MAKE_NH_
        fv_debug = .F.
@@ -135,7 +135,7 @@
 
  &external_ic_nml
        filtered_terrain = .true.
-       levp = 63
+       levp = 65
        gfs_dwinds = .true.
        checker_tr = .F.
        nt_checker = 0

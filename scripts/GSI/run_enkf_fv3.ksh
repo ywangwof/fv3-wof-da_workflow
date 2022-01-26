@@ -267,7 +267,8 @@ for ((imem=1;imem<=$NMEM_ENKF;imem++)); do
     member=$(printf "%03d" $imem)
     filename="fv3sar_tile1_mem${member}_dynvartracer"
     filesize=$(stat -c %s $filename)
-    while [[ $filesize -lt 727000000 ]];do
+#    while [[ $filesize -lt 727000000 ]];do
+    while [[ $filesize -lt  500000000 ]];do
         echo "waiting for $filename to be ready ...."
         sleep 10
         filesize=$(stat -c %s $filename)
@@ -304,7 +305,7 @@ if [ ${RADAR_ONLY} -eq 1 ]; then
     CORRLENGTHSH=15
     CORRLENGTHTR=15
     CORRLENGTHV=1.1
-    cp -f ${ENKF_STATIC}/anavinfo_fv3_enkf_radar ./anavinfo
+    cp -f ${ENKF_STATIC}/anavinfo_fv3_enkf_radar.${CCPP_SUITE} ./anavinfo
 fi
 
 IF_RH=0
@@ -314,7 +315,6 @@ if [ ${IF_RH} -eq 1 ]; then
 else
   pseudo_rh='.false.'
 fi
-
 
 . $ENKF_NAMELIST
 cat << EOF > enkf.nml

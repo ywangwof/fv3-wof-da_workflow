@@ -27,8 +27,8 @@ MPIRUN=srun
 exec_fp=${FV3LAM_ROOT}/ufs_weather_model.${CCPP_SUITE}
 exec_create_restart=${FV3LAM_ROOT}/create_expanded_restart_files_for_DA.x
 exec_prep_DA=${FV3LAM_ROOT}/prep_for_regional_DA.x
-NAMELIST_MC=${FV3LAM_STATIC}/FV3_${CCPP_SUITE}/model_configure
-NAMELIST_IN=${FV3LAM_STATIC}/FV3_${CCPP_SUITE}/input.nml
+NAMELIST_MC=${FV3LAM_STATIC}/FV3_${CCPP_SUITE}/model_configure_cycle
+NAMELIST_IN=${FV3LAM_STATIC}/FV3_${CCPP_SUITE}/input.nml_cycle
 FIXam=${FV3LAM_STATIC}/fix_am
 
 if [ ${INIT_TIME} -eq ${START_TIME} ]; then
@@ -232,6 +232,8 @@ while [[ $ensmem -lt $end_member ]];do
  ${CP} -f ${FV3LAM_STATIC}/qr_acr_qsV2.dat .
  ${CP} -f ${FV3LAM_STATIC}/FV3_${CCPP_SUITE}/nems.configure .
 
+ sed -i -e "s/_YEAR_/${start_year}/;s/_MON_/${start_month}/;s/_DAY_/${start_day}/;s/_HOUR_/${start_hour}/;s/_MIN_/${start_minute}/" diag_table
+
  if [ ${COLD_START} -eq 1 ]; then
    make_nh='.true.'
    na_init=1
@@ -274,10 +276,10 @@ while [[ $ensmem -lt $end_member ]];do
  # --- input.nml
  sed 's/_EXTERNAL_IC_/'${external_ic}'/g'  ${NAMELIST_IN} | \
  sed 's/_MAKE_NH_/'${make_nh}'/g'     | \
- sed 's/_BC_INTV_/1/g'                | \
  sed 's/_MOUNTAIN_/'${mountain}'/g'   | \
  sed 's/_NA_INIT_/'${na_init}'/g'     | \
  sed 's/_NGGPS_IC_/'${nggps_ic}'/g'   | \
+ sed 's/_BC_INTV_/1/g'                | \
  sed 's/_LSOIL_/'${lsoil}'/g'         | \
  sed 's/_NSTF2_/'${nstf2}'/g'         | \
  sed 's/_WARM_START_/'${warm_start}'/g' | \

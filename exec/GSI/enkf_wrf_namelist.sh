@@ -1,4 +1,4 @@
-# define namelist for community EnKF release version 1.0 
+# define namelist for community EnKF release version 1.0
 
 export enkf_namelist="
 
@@ -54,12 +54,12 @@ export enkf_namelist="
   deterministic       = .true.,
   sortinc             = .true.,
   univaroz            = .true.,
-  regional            = .false., 
+  regional            = .false.,
   adp_anglebc         = .false.,
   angord              = 4,
   use_edges           = .false.,
   emiss_bc            = .true.,
-  biasvar             = -500 
+  biasvar             = -500
   fv3_native          = .true.,
 /
  &satobs_enkf
@@ -117,9 +117,9 @@ export enkf_namelist="
   sattypes_rad(52)    = 'seviri_m10',    dsis(52)= 'seviri_m10',
   sattypes_rad(53)    = 'amsua_metop-b', dsis(53)= 'amsua_metop-b',
   sattypes_rad(54)    = 'hirs4_metop-b', dsis(54)= 'hirs4_metop-b',
-  sattypes_rad(55)    = 'mhs_metop-b',   dsis(15)= 'mhs_metop-b',
+  sattypes_rad(55)    = 'mhs_metop-b',   dsis(55)= 'mhs_metop-b',
   sattypes_rad(56)    = 'iasi_metop-b',  dsis(56)= 'iasi616_metop-b',
-  sattypes_rad(57)    = 'avhrr3_metop-b',dsis(56)= 'avhrr3_metop-b',
+  sattypes_rad(57)    = 'avhrr3_metop-b',dsis(57)= 'avhrr3_metop-b',
   sattypes_rad(58)    = 'atms_npp',      dsis(58)= 'atms_npp',
   sattypes_rad(59)    = 'cris_npp',      dsis(59)= 'cris_npp',
  /
@@ -135,7 +135,7 @@ export enkf_namelist="
 &nam_wrf
   arw                 = $IF_ARW,
   nmm                 = $IF_NMM,
- / 
+ /
  &nam_fv3
   nx_res              = $NLONS,
   ny_res              = $NLATS,

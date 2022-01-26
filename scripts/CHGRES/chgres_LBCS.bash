@@ -184,7 +184,7 @@ cat << EOF > ./fort.41
     tg3_from_soil = .false.
     tracers = ''
     tracers_input = ''
-    vcoord_file_target_grid = '${CHGRES_STATIC}/global_hyblev.l63.txt'
+    vcoord_file_target_grid = '${CHGRES_STATIC}/global_hyblev.l65.txt'
 /
 EOF
 

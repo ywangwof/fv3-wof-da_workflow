@@ -290,6 +290,11 @@
             </envar>
 
             <envar>
+              <name>CCPP_SUITE</name>
+              <value>&EXPenvir;</value>
+            </envar>
+
+            <envar>
               <name>DATAHOME</name>
               <value>&CYCDIR;</value>
             </envar>
@@ -424,6 +429,11 @@
             </envar>
 
             <envar>
+              <name>CCPP_SUITE</name>
+              <value>&EXPenvir;</value>
+            </envar>
+
+            <envar>
               <name>DATAHOME</name>
               <value>&CYCDIR;</value>
             </envar>
@@ -552,6 +562,11 @@
             </envar>
 
             <envar>
+              <name>CCPP_SUITE</name>
+              <value>&EXPenvir;</value>
+            </envar>
+
+            <envar>
               <name>DATAHOME</name>
               <value>&CYCDIR;</value>
             </envar>
@@ -620,6 +635,11 @@
         <envar>
           <name>PROC</name>
           <value>48</value>
+        </envar>
+
+        <envar>
+          <name>CCPP_SUITE</name>
+          <value>&EXPenvir;</value>
         </envar>
 
         <envar>
@@ -757,6 +777,11 @@
         </envar>
 
         <envar>
+          <name>CCPP_SUITE</name>
+          <value>&EXPenvir;</value>
+        </envar>
+
+        <envar>
           <name>DATAHOME</name>
           <value>&CYCDIR;</value>
         </envar>
@@ -879,6 +904,11 @@
         </envar>
 
         <envar>
+          <name>CCPP_SUITE</name>
+          <value>&EXPenvir;</value>
+        </envar>
+
+        <envar>
           <name>DATAHOME</name>
           <value>&CYCDIR;</value>
         </envar>
@@ -943,6 +973,11 @@
         <envar>
           <name>PROC</name>
           <value>48</value>
+        </envar>
+
+        <envar>
+          <name>CCPP_SUITE</name>
+          <value>&EXPenvir;</value>
         </envar>
 
         <envar>

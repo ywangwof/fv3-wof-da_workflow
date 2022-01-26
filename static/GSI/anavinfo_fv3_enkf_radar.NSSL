@@ -32,7 +32,7 @@ state_tendencies::
  prse 51      met_guess
 ::
 
-state_vector::  
+state_vector::
 !var     level  itracer amedge  source     funcof
  u        64      0      no     met_guess    u
  v        64      0      no     met_guess    v
@@ -58,16 +58,17 @@ control_vector::
 
 control_vector_enkf::
 !var     level  itracer as/tsfc_sdv  an_amp0   source  funcof
- u        62      0       0.28        -1.0     state    u,v
- v        62      0       0.28        -1.0     state    u,v
- w        62      0       1.0          -1.0     state     w
+ u        60      0       0.28        -1.0     state    u,v
+ v        60      0       0.28        -1.0     state    u,v
+ w        60      0       1.0          -1.0     state     w
  ps        1      0       0.30        -1.0     state    p3d
- t        62      0       0.70        -1.0     state    tv
- q        62      1       0.10        -1.0     state    q
- ql       62      1       1.00        -1.0     state    cw
- qr       62      1       1.0        -1.0     state    qr
- qs       62      1       1.0        -1.0     state    qs
- qi       62      1       1.0        -1.0     state    qi
- qg       62      1       1.0        -1.0     state    qg
- dbz      62      1       1.0        -1.0     state   dbz
+ t        60      0       0.70        -1.0     state    tv
+ q        60      1       0.10        -1.0     state    q
+ ql       60      1       1.00        -1.0     state    cw
+ qr       60      1       1.0        -1.0     state    qr
+ qs       60      1       1.0        -1.0     state    qs
+ qi       60      1       1.0        -1.0     state    qi
+ qg       60      1       1.0        -1.0     state    qg
+ qh       60      1       1.0        -1.0     state    qh
+ dbz      60      1       1.0        -1.0     state   dbz
 ::

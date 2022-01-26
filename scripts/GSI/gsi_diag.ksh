@@ -213,7 +213,7 @@ ensnum=${ENSEMBLE_SIZE}
        CONVINFO=${FIX_ROOT}/HRRRENS_regional_convinfo.3km.txt_conv
      fi
      if [ ${RADAR_ONLY} -eq 1 ]; then
-       ANAVINFO=${FIX_ROOT}/anavinfo_fv3_notlog_dbz_state_w_qc_exist_model_dbz
+       ANAVINFO=${FIX_ROOT}/anavinfo_fv3_notlog_dbz_state_w_qc_exist_model_dbz.${CCPP_SUITE}
      fi
      SATANGL=${FIX_ROOT}/global_satangbias.txt
      SATINFO=${FIX_ROOT}/nam_regional_satinfo.txt

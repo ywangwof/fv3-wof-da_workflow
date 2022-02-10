@@ -2,55 +2,54 @@ met_guess::
 !var     level    crtm_use    desc              orig_name
  ps        1      -1         surface_pressure     ps
   z         1      -1         geopotential_height  phis
-  u        64       2         zonal_wind           u
-  v        64       2         meridional_wind      v
-  div      64      -1         zonal_wind           div
-  vor      64      -1         meridional_wind      vor
-  tv       64       2         virtual_temperature  tv
-  q        64       2         specific_humidity    sphu
-  oz       64       2         ozone                ozone
+  u        60       2         zonal_wind           u
+  v        60       2         meridional_wind      v
+  div      60      -1         zonal_wind           div
+  vor      60      -1         meridional_wind      vor
+  tv       60       2         virtual_temperature  tv
+  q        60       2         specific_humidity    sphu
+  oz       60       2         ozone                ozone
 ::
 
 state_derivatives::
 !var  level  src
  ps   1      met_guess
- u    64     met_guess
- v    64     met_guess
- tv   64     met_guess
- q    64     met_guess
- oz   64     met_guess
- prse 51     met_guess
+ u    60     met_guess
+ v    60     met_guess
+ tv   60     met_guess
+ q    60     met_guess
+ oz   60     met_guess
+ prse 61     met_guess
 ::
 
 state_tendencies::
 !var  levels  source
- u    64      met_guess
- v    64      met_guess
- tv   64      met_guess
- q    64      met_guess
- oz   64      met_guess
- prse 51      met_guess
+ u    60      met_guess
+ v    60      met_guess
+ tv   60      met_guess
+ q    60      met_guess
+ oz   60      met_guess
+ prse 61      met_guess
 ::
 
 state_vector::
 !var     level  itracer amedge  source     funcof
- u        64      0      no     met_guess    u
- v        64      0      no     met_guess    v
- tv       64      0      no     met_guess    tv
- tsen     64      0      no     met_guess    tv,q
- q        64      1      no     met_guess    q
- prse      51      0      yes    met_guess    prse
+ u        60      0      no     met_guess    u
+ v        60      0      no     met_guess    v
+ t        60      0      no     met_guess    tv
+ tsen     60      0      no     met_guess    tv,q
+ q        60      1      no     met_guess    q
  ps        1      0      no     met_guess    p3d
  sst       1      0      no     met_guess    sst
 ::
 
 control_vector::
 !var     level  itracer as/tsfc_sdv  an_amp0   source  funcof
- sf       64      0       0.28        -1.0     state    u,v
- vp       64      0       0.28        -1.0     state    u,v
+ sf       60      0       0.28        -1.0     state    u,v
+ vp       60      0       0.28        -1.0     state    u,v
  ps        1      0       0.30        -1.0     state    p3d
- t        64      0       0.70        -1.0     state    tv
- q        64      1       0.10        -1.0     state    q
+ t        60      0       0.70        -1.0     state    tv
+ q        60      1       0.10        -1.0     state    q
  sst       1      0       1.00        -1.0     state    sst
  stl       1      0       1.00        -1.0     motley   sst
  sti       1      0       1.00        -1.0     motley   sst

@@ -1,4 +1,4 @@
-#!/bin/ksh --login
+#!/bin/bash
 
 # Jet environment specific
 source /etc/profile.d/modules.sh
@@ -113,14 +113,15 @@ echo "NLEVS = ${NLEVS}"
 #####################################################
 # case set up (users should change this part)
 #####################################################
-  ARCH='LINUX_PBS'   # IBM_LSF, LINUX, LINUX_LSF, LINUX_PBS, or DARWIN_PGI
+#  ARCH='LINUX_PBS'   # IBM_LSF, LINUX, LINUX_LSF, LINUX_PBS, or DARWIN_PGI
 
 # FIX_ROOT = path of fix files
 # GSI_EXE  = path and name of the gsi executable
 
-  ENKF_EXE=${GSI_ROOT}/enkf_fv3reg.x
-  CRTM_ROOT=CRTM_REL-2.1.3
-  ENKF_NAMELIST=${GSI_ROOT}/enkf_wrf_namelist.sh
+WOF_FIXROOT="${ENKF_STATIC}/WoFS/enkf"
+
+ENKF_EXE=${GSI_ROOT}/enkf_fv3reg.x
+CRTM_ROOT=CRTM_REL-2.1.3
 
 # ensemble parameters
 #
@@ -134,15 +135,19 @@ echo "NLEVS = ${NLEVS}"
 # Set up workdir
 #####################################################
 if [ ${CONV_ONLY} -eq 1  ]; then
-  ENKF_ROOT=${WORK_ROOT}/enkfprd_d0${DOMAIN}
-  diag_ROOT=${WORK_ROOT}/gsiprd_d0${DOMAIN}
+    ENKF_ROOT=${WORK_ROOT}/enkfprd_d0${DOMAIN}
+    diag_ROOT=${WORK_ROOT}/gsiprd_d0${DOMAIN}
+    ENKF_NAMELIST=${GSI_ROOT}/enkf_wrf_namelist.sh
 elif [ ${RADAR_ONLY} -eq 1 ]; then
-  ENKF_ROOT=${WORK_ROOT}/enkfprd_radar_d0${DOMAIN}
-  diag_ROOT=${WORK_ROOT}/gsiprd_radar_d0${DOMAIN}
+    ENKF_ROOT=${WORK_ROOT}/enkfprd_radar_d0${DOMAIN}
+    diag_ROOT=${WORK_ROOT}/gsiprd_radar_d0${DOMAIN}
+    ENKF_NAMELIST=${GSI_ROOT}/enkf_fv3_namelist_wof.sh
 fi
 
 if [ ! -d ${ENKF_ROOT} ]; then
-  mkdir -p $ENKF_ROOT
+    #mkdir -p $ENKF_ROOT
+    echo "EnKF dir: ${ENKF_ROOT} not exit"
+    exit 1
 fi
 cd $ENKF_ROOT
 
@@ -157,18 +162,20 @@ echo "current time is `${DATE}`"
 echo "waiting for WRF and GSI to finish for each ensemble member"
 imem=1
 while [[ $imem -le $NMEM_ENKF ]]; do
-   ensmemid=`printf %4.4i $imem`
-   member="mem"`printf %03i $imem`
-   while [[ ! -s ${diag_ROOT}/stdout_mem${ensmemid} ]];do
-     sleep 0.1
-   done
-   echo "member ${imem} complete"
+    ensmemid=`printf %4.4i $imem`
+    member="mem"`printf %03i $imem`
+    while [[ ! -s ${diag_ROOT}/stdout_mem${ensmemid} ]];do
+        #sleep 0.1
+        echo "File: ${diag_ROOT}/stdout_mem${ensmemid} not found."
+        exit 2
+    done
+    echo "member ${imem} complete"
 
-   echo "linking diag file"
-   for type in $list; do
-      ln -s $diag_ROOT/diag_${type}_ges.mem${ensmemid} ./diag_${type}_ges.${member}
-   done
-   (( imem = $imem + 1 ))
+    echo "linking diag file"
+    for type in $list; do
+        ln -sf $diag_ROOT/diag_${type}_ges.mem${ensmemid} ./diag_${type}_ges.${member}
+    done
+    (( imem = $imem + 1 ))
 done
 echo "current time is `${DATE}`"
 
@@ -230,7 +237,7 @@ SCANINFO=${diag_ROOT}/scaninfo
 OZINFO=${diag_ROOT}/ozinfo
 
 
-ln -s $ENKF_EXE        ./enkf.x
+ln -sf $ENKF_EXE        ./enkf.x
 
 cp $CONVINFO        ./convinfo
 cp $SATINFO         ./satinfo
@@ -241,8 +248,12 @@ cp $OZINFO          ./ozinfo
 cp $diag_ROOT/satbias_in ./satbias_in
 cp $diag_ROOT/satbias_angle ./satbias_angle
 
+#cp ${WOF_FIXROOT}/prior_inf_d01.1 ./
+#cp ${WOF_FIXROOT}/prior_inf_sd_d01.1 ./
+cp ${WOF_FIXROOT}/obs_locinfo ./
+
 for type in $list; do
-   ln -s $diag_ROOT/diag_${type}_ges.ensmean .
+    ln -sf $diag_ROOT/diag_${type}_ges.ensmean .
 done
 
 #
@@ -287,25 +298,27 @@ sleep 10
 
 # Build the GSI namelist on-the-fly
 if [ ${CONV_ONLY} -eq 1  ]; then
-  COVINFLATENH=0.0
-  COVINFLATESH=0.0
-  COVINFLATETR=0.0
-  CORRLENGTHNH=300
-  CORRLENGTHSH=300
-  CORRLENGTHTR=300
-  CORRLENGTHV=0.55
-  cp -f ${ENKF_STATIC}/anavinfo_fv3_enkf_con ./anavinfo
+    COVINFLATENH=0.0
+    COVINFLATESH=0.0
+    COVINFLATETR=0.0
+    CORRLENGTHNH=300
+    CORRLENGTHSH=300
+    CORRLENGTHTR=300
+    CORRLENGTHV=0.55
+    cp -f ${ENKF_STATIC}/anavinfo_fv3_enkf_con ./anavinfo
 fi
 
 if [ ${RADAR_ONLY} -eq 1 ]; then
     COVINFLATENH=0.0
     COVINFLATESH=0.0
     COVINFLATETR=0.0
-    CORRLENGTHNH=15
-    CORRLENGTHSH=15
-    CORRLENGTHTR=15
-    CORRLENGTHV=1.1
-    cp -f ${ENKF_STATIC}/anavinfo_fv3_enkf_radar.${CCPP_SUITE} ./anavinfo
+    CORRLENGTHNH=460
+    CORRLENGTHSH=460
+    CORRLENGTHTR=460
+    CORRLENGTHV=0.45
+    CORRLENGTHS=1.0
+    #cp -f ${ENKF_STATIC}/anavinfo_fv3_enkf_radar.${CCPP_SUITE} ./anavinfo
+    cp -f ${ENKF_STATIC}/anavinfo_fv3_enkf_radar_wof.${CCPP_SUITE} ./anavinfo
 fi
 
 IF_RH=0
@@ -333,14 +346,14 @@ echo ' Run EnKF'
 itry=1
 echo "Running enkf.x in $(pwd) at itry=$itry ...."
 while [ ${itry} -le 3 ]; do
-  #${MPIRUN} -n ${PROC} -o ${BEGPROC} ./enkf.x < enkf.nml > stdout 2>&1
-  ${MPIRUN} -n ${PROC} ./enkf.x < enkf.nml > stdout 2>&1
+    #${MPIRUN} -n ${PROC} -o ${BEGPROC} ./enkf.x < enkf.nml > stdout 2>&1
+    ${MPIRUN} -n ${PROC} ./enkf.x < enkf.nml > stdout 2>&1
 
-  error=$?
-  if [ ${error} -eq 0 ]; then
-     break
-  fi
-  (( itry = itry + 1  ))
+    error=$?
+    if [ ${error} -eq 0 ]; then
+       break
+    fi
+    (( itry = itry + 1  ))
 done
 
 
@@ -358,21 +371,21 @@ fi
 ################################################
 imem=1
 while [[ $imem -le $NMEM_ENKF ]]; do
-   ensmemid=`printf %4.4i $imem`
-   member="mem"`printf %03i $imem`
-   if [ -e ${WORK_ROOT}/fv3prd_mem${ensmemid}/ANA/fv_core.res.tile1_new.nc ]; then
-      mv ${WORK_ROOT}/fv3prd_mem${ensmemid}/ANA ${WORK_ROOT}/fv3prd_mem${ensmemid}/ANA_CONV
-      mkdir -p ${WORK_ROOT}/fv3prd_mem${ensmemid}/ANA
-      mv -f ${WORK_ROOT}/fv3prd_mem${ensmemid}/ANA_CONV/fv_srf_wnd.res.tile1.nc ${WORK_ROOT}/fv3prd_mem${ensmemid}/ANA/
-      mv -f ${WORK_ROOT}/fv3prd_mem${ensmemid}/ANA_CONV/gfs_bndy.tile7.001.nc ${WORK_ROOT}/fv3prd_mem${ensmemid}/ANA/
-      mv -f ${WORK_ROOT}/fv3prd_mem${ensmemid}/ANA_CONV/sfc_data.nc ${WORK_ROOT}/fv3prd_mem${ensmemid}/ANA/
-   fi
-   BK_FILE_DIR=${WORK_ROOT}/fv3prd_mem${ensmemid}/ANA
-   echo "Moving member ${ensmemid} with enkf member analysis"
-   ${MV} fv3sar_tile1_${member}_dynvar ${BK_FILE_DIR}/fv_core.res.tile1_new.nc
-   ${MV} fv3sar_tile1_${member}_tracer ${BK_FILE_DIR}/fv_tracer.res.tile1_new.nc
-   ${MV} fv3sar_tile1_${member}_phyvar ${BK_FILE_DIR}/phy_data.nc
-   (( imem = $imem + 1 ))
+    ensmemid=`printf %4.4i $imem`
+    member="mem"`printf %03i $imem`
+    if [ -e ${WORK_ROOT}/fv3prd_mem${ensmemid}/ANA/fv_core.res.tile1_new.nc ]; then
+       mv ${WORK_ROOT}/fv3prd_mem${ensmemid}/ANA ${WORK_ROOT}/fv3prd_mem${ensmemid}/ANA_CONV
+       mkdir -p ${WORK_ROOT}/fv3prd_mem${ensmemid}/ANA
+       mv -f ${WORK_ROOT}/fv3prd_mem${ensmemid}/ANA_CONV/fv_srf_wnd.res.tile1.nc ${WORK_ROOT}/fv3prd_mem${ensmemid}/ANA/
+       mv -f ${WORK_ROOT}/fv3prd_mem${ensmemid}/ANA_CONV/gfs_bndy.tile7.001.nc ${WORK_ROOT}/fv3prd_mem${ensmemid}/ANA/
+       mv -f ${WORK_ROOT}/fv3prd_mem${ensmemid}/ANA_CONV/sfc_data.nc ${WORK_ROOT}/fv3prd_mem${ensmemid}/ANA/
+    fi
+    BK_FILE_DIR=${WORK_ROOT}/fv3prd_mem${ensmemid}/ANA
+    echo "Moving member ${ensmemid} with enkf member analysis"
+    ${MV} fv3sar_tile1_${member}_dynvar ${BK_FILE_DIR}/fv_core.res.tile1_new.nc
+    ${MV} fv3sar_tile1_${member}_tracer ${BK_FILE_DIR}/fv_tracer.res.tile1_new.nc
+    ${MV} fv3sar_tile1_${member}_phyvar ${BK_FILE_DIR}/phy_data.nc
+    (( imem = $imem + 1 ))
 done
 
 ###################################################

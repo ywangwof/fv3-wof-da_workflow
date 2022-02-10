@@ -558,46 +558,58 @@ if [ ${if_gotofcst} == 'no' ]; then
     cd ${SBATCHSELLDIR}
 
     if [ ${if_skip_radarobs} == 'no' ]; then
-      echo "$(date +%Y-%m-%d_%H:%M): Copy radar obs. for cycle ${thiscycle}"
-      #${SCRIPTS}/GSI/radar_cp.ksh
-      cat << EOF > ${SBATCHSELLDIR}/radar_cp_${thiscycle}.sh
-#!/bin/bash
-#SBATCH -A ${ACCOUNT}
-#SBATCH -J radar_cp_${thiscycletime}
-#SBATCH -o ./jobradar_cp_${thiscycle}_%j.out
-#SBATCH -e ./jobradar_cp_${thiscycle}_%j.err
-#SBATCH -n 1
-#SBATCH --partition=${QUEUE}
-#SBATCH -t 00:30:00
+        echo "$(date +%Y-%m-%d_%H:%M): Copy radar obs. for cycle ${thiscycle}"
 
-export START_TIME=${thiscycle}
-export SUBH_TIME="00"
-export DATAHOME=${DATABASE_DIR}/cycle/${thiscycle}/obsprd
-export NSSLMOSAICNC=${RADAR_DIR}
-export GSIEXEC=${GSI_ROOT}
+        export START_TIME=${thiscycle}
+        export SUBH_TIME="00"
+        export DATAHOME=${DATABASE_DIR}/cycle/${thiscycle}/obsprd
+        export OBSDIR=${OBS_DIR}
+        ${SCRIPTS}/GSI/radar_wof_obs.sh
 
-${SCRIPTS}/GSI/radar_cp.ksh
+        #export NSSLMOSAICNC=${RADAR_DIR}
+        #export GSIEXEC=${GSI_ROOT}
+        #${SCRIPTS}/GSI/radar_cp.ksh
 
-error=\$?
-if [ \${error} -ne 0 ]; then
-  echo "" > \${DATAHOME}/FAILED_radar_cp
-else
-  echo "" > \${DATAHOME}/SUCCESS_radar_cp
-fi
-
-EOF
-        sleep 1
-        sbatch ${SBATCHSELLDIR}/radar_cp_${thiscycle}.sh
-
-        echo "Waiting for ${DATABASE_DIR}/cycle/${thiscycle}/obsprd/SUCCESS_radar_cp ...."
-        while [ ! -e "${DATABASE_DIR}/cycle/${thiscycle}/obsprd/SUCCESS_radar_cp" ]; do
-            if [[ -e "${DATABASE_DIR}/cycle/${thiscycle}/obsprd/FAILED_radar_cp" ]]; then
-                echo "${SCRIPTS}/GSI/radar_cp.ksh failed."
-                exit 1
-            else
-                sleep 20
-            fi
-        done
+#      cat << EOF > ${SBATCHSELLDIR}/radar_cp_${thiscycle}.sh
+##!/bin/bash
+##SBATCH -A ${ACCOUNT}
+##SBATCH -J radar_cp_${thiscycletime}
+##SBATCH -o ./jobradar_cp_${thiscycle}_%j.out
+##SBATCH -e ./jobradar_cp_${thiscycle}_%j.err
+##SBATCH -n 1
+##SBATCH --partition=${QUEUE}
+##SBATCH -t 00:30:00
+#
+#export START_TIME=${thiscycle}
+#export SUBH_TIME="00"
+#export DATAHOME=${DATABASE_DIR}/cycle/${thiscycle}/obsprd
+##export NSSLMOSAICNC=${RADAR_DIR}
+#export OBSDIR=${OBS_DIR}
+#export GSIEXEC=${GSI_ROOT}
+#
+##${SCRIPTS}/GSI/radar_cp.ksh
+#${SCRIPTS}/GSI/radar_wof_obs.sh
+#
+#error=\$?
+#if [ \${error} -ne 0 ]; then
+#  echo "" > \${DATAHOME}/FAILED_radar_cp
+#else
+#  echo "" > \${DATAHOME}/SUCCESS_radar_cp
+#fi
+#
+#EOF
+#        sleep 1
+#        sbatch ${SBATCHSELLDIR}/radar_cp_${thiscycle}.sh
+#
+#        echo "Waiting for ${DATABASE_DIR}/cycle/${thiscycle}/obsprd/SUCCESS_radar_cp ...."
+#        while [ ! -e "${DATABASE_DIR}/cycle/${thiscycle}/obsprd/SUCCESS_radar_cp" ]; do
+#            if [[ -e "${DATABASE_DIR}/cycle/${thiscycle}/obsprd/FAILED_radar_cp" ]]; then
+#                echo "${SCRIPTS}/GSI/radar_cp.ksh failed."
+#                exit 1
+#            else
+#                sleep 20
+#            fi
+#        done
     fi
 
 
@@ -800,7 +812,7 @@ EOF
 
   rm -f \${DATAHOME}/${thiscycle}/ensmeanFAILED \${DATAHOME}/${thiscycle}/ensmeanSUCCESS
 
-  ${SCRIPTS}/GSI/firstguess_ensmean.ksh
+  ${SCRIPTS}/GSI/firstguess_ensmean.sh
 
   error=\$?
   if [ \${error} -ne 0 ]; then
@@ -870,7 +882,7 @@ EOF
 
   rm -f \${DATAHOME}/${thiscycle}/${gsiprdname}/gsimeanFAILED \${DATAHOME}/${thiscycle}/${gsiprdname}/gsimeanSUCCESS
 
-  ${SCRIPTS}/GSI/gsi_diag.ksh
+  ${SCRIPTS}/GSI/gsi_diag.sh
 
   error=\$?
   if [ \${error} -ne 0 ]; then
@@ -940,7 +952,7 @@ EOF
   rm -f \${DATAHOME}/${thiscycle}/${gsiprdname}/FAILED_${imem}
   rm -f \${DATAHOME}/${thiscycle}/${gsiprdname}/SUCCESS_${imem}
 
-  ${SCRIPTS}/GSI/gsi_diag_mem.ksh
+  ${SCRIPTS}/GSI/gsi_diag_mem.sh
 
   error=\$?
   if [ \${error} -ne 0 ]; then
@@ -1082,7 +1094,7 @@ EOF
 
   rm -f \${WORK_ROOT}/enkfFAILED \${WORK_ROOT}/enkfSUCCESS
 
-  ${SCRIPTS}/GSI/run_enkf_fv3.ksh
+  ${SCRIPTS}/GSI/run_enkf_fv3.sh
 
   error=\$?
   if [ \${error} -ne 0 ]; then

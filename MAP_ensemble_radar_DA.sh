@@ -461,6 +461,10 @@ EOF
     fi
 fi
 
+#-----------------------------------------------------------------------
+# DA cycles start here
+#-----------------------------------------------------------------------
+
 icycle=$istart
 
 if [ ${if_gotofcst} == 'no' ]; then
@@ -748,19 +752,8 @@ EOF
           NVARNUM=6
           NVARNUM1=14
           IF_STATIC_BEC=no
-          #
-          NODENUM_hyb=60
-          TASKNUM_hyb=240
-          QUEUE_hyb=${QUEUE1}
-          RESNAME_hyb=${RESNAME_skx}
-          OMPTHREADS_hyb=14
 
-          NODENUM_enkf=60
           TASKNUM_enkf=72
-          QUEUE_enkf=${QUEUE1}
-          RESNAME_enkf=${RESNAME_skx}
-          OMPTHREADS_enkf=56
-
         elif [ ${conv_radar_flag} -eq 2 ]; then
           if_conv=0
           if_radar=1
@@ -768,19 +761,7 @@ EOF
           NVARNUM1=14
           IF_STATIC_BEC=${STATIC_BEC}
 
-          #
-          NODENUM_hyb=60
-          TASKNUM_hyb=240
-          QUEUE_hyb=${QUEUE1}
-          RESNAME_hyb=${RESNAME_skx}
-          OMPTHREADS_hyb=14
-
-          NODENUM_enkf=60
           TASKNUM_enkf=60
-          QUEUE_enkf=${QUEUE1}
-          RESNAME_enkf=${SBATCH_OPT}
-          OMPTHREADS_enkf=14
-
         fi
 
 
@@ -1088,8 +1069,6 @@ EOF
   export IF_RH=${if_rh}
   #export BEGPROC=5600
   export PROC=${TASKNUM_enkf}
-  #export OMP_NUM_THREADS=${OMPTHREADS_enkf}
-  #export IBRUN_TASKS_PER_NODE=$(( 56 / ${OMPTHREADS_enkf} ))
   export CCPP_SUITE=${CCPP_SUITE}
 
   rm -f \${WORK_ROOT}/enkfFAILED \${WORK_ROOT}/enkfSUCCESS
@@ -1148,7 +1127,7 @@ EOF
 #SBATCH -o ./jobrecent${thiscycle}_%j.out
 #SBATCH -e ./jobrecent${thiscycle}_%j.err
 #SBATCH -n 48
-#SBATCH --partition=${QUEUE1}
+#SBATCH --partition=${QUEUE2}
 #SBATCH -t 00:30:00
 
   export DATAHOME=${DATABASE_DIR}/cycle

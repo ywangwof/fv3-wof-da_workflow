@@ -1,0 +1,85 @@
+met_guess::
+!var     level    crtm_use    desc              orig_name
+  ps        1      -1         surface_pressure     ps
+  z         1      -1         geopotential_height  phis
+  u        60       2         zonal_wind           u
+  v        60       2         meridional_wind      v
+  w        60       2         meridional_wind      w
+  t        60       2         virtual_temperature  t
+  q        60       2         specific_humidity    sphum
+  oz       60       2         ozone                o3mr
+  delp     60      -1         fv3 del pressure     delp
+  ql       60      10         cloud_condensate  QCLOUD
+  qr       60      10         rain              QRAIN
+  qs       60      10         snow              QSNOW
+  qi       60      10         ice               QICE
+  qg       60      10         graupel           QGRAUP
+  dbz      60      10         reflectivity      REFL_10CM
+::
+
+state_derivatives::
+!var  level  src
+ ps   1      met_guess
+ u    60     met_guess
+ v    60     met_guess
+ t    60     met_guess
+ q    60     met_guess
+ oz   60     met_guess
+ prse 61     met_guess
+::
+
+state_tendencies::
+!var  levels  source
+ u    60      met_guess
+ v    60      met_guess
+ t    60      met_guess
+ q    60      met_guess
+ oz   60      met_guess
+ prse 61      met_guess
+::
+
+state_vector::
+!var     level  itracer amedge source     funcof
+ u        60      0       no     met_guess    u
+ v        60      0       no     met_guess    v
+ w        60      0       no     met_guess    w
+ t        60      0       no     met_guess    tv
+ tsen     60      0       no     met_guess    tv,q
+ q        60      1       no     met_guess    q
+ ps        1      0       no     met_guess    p3d
+ sst       1      0       no     met_guess    sst
+ qr       60      1       no     met_guess    qr
+ ql       60      1       no     met_guess    qc
+ qs       60      1       no     met_guess    qs
+ qi       60      1       no     met_guess    qi
+ qg       60      1       no     met_guess    qg
+ dbz      60      1       no     met_guess    dbz
+::
+
+control_vector::
+!var     level  itracer as/tsfc_sdv  an_amp0   source  funcof
+ sf       60      0       0.5         -1.0     state    u,v
+ vp       60      0       0.5         -1.0     state    u,v
+ ps        1      0       0.50        -1.0     state    p3d
+ t        60      0       0.70        -1.0     state    tv
+ q        60      1       0.40        -1.0     state    q
+ sst       1      0       1.00        -1.0     state    sst
+ stl       1      0       1.00        -1.0     motley   sst
+ sti       1      0       1.00        -1.0     motley   sst
+::
+
+control_vector_enkf::
+!var     level  itracer as/tsfc_sdv  an_amp0   source  funcof
+ u        60      0       0.28       -1.0     state    u,v
+ v        60      0       0.28       -1.0     state    u,v
+ w        60      0       1.0         -1.0     state   w
+ ps        1      0       0.50        -1.0     state   p3d
+ t        60      0       0.70        -1.0     state   tv
+ q        60      1       0.40        -1.0     state   q
+ ql       60      1       1.0        -1.0     state    cw
+ qr       60      1       1.0        -1.0     state    qr
+ qs       60      1       1.0        -1.0     state    qs
+ qi       60      1       1.0        -1.0     state    qi
+ qg       60      1       1.0        -1.0     state    qg
+ dbz      60      1       1.0        -1.0     state    dbz
+::

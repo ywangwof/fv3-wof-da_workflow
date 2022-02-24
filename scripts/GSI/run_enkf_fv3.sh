@@ -279,7 +279,7 @@ for ((imem=1;imem<=$NMEM_ENKF;imem++)); do
     filename="fv3sar_tile1_mem${member}_dynvartracer"
     filesize=$(stat -c %s $filename)
 #    while [[ $filesize -lt 727000000 ]];do
-    while [[ $filesize -lt  500000000 ]];do
+    while [[ $filesize -lt  400000000 ]]; do
         echo "waiting for $filename to be ready ...."
         sleep 10
         filesize=$(stat -c %s $filename)

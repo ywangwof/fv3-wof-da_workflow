@@ -230,14 +230,25 @@ while [[ $DOMAIN -le $NUM_DOMAINS ]];do
     fi
 
     if [ ${RADAR_ONLY} -eq 1 ]; then
-        BERROR=${WOF_FIXROOT}/berror_stats
-        OBERROR=${WOF_FIXROOT}/errtable
-        CONVINFO=${WOF_FIXROOT}/convinfo
-        ANAVINFO=${WOF_FIXROOT}/anavinfo
-        SATANGL=${WOF_FIXROOT}/satbias_angle
-        SATINFO=${WOF_FIXROOT}/satinfo
-        OZINFO=${WOF_FIXROOT}/ozinfo
-        PCPINFO=${WOF_FIXROOT}/pcpinfo
+        #if [[ "${CCPP_SUITE}" =~ "NSSL" ]]; then
+            BERROR=${WOF_FIXROOT}/berror_stats
+            OBERROR=${WOF_FIXROOT}/errtable
+            CONVINFO=${WOF_FIXROOT}/convinfo
+            ANAVINFO=${WOF_FIXROOT}/anavinfo.${CCPP_SUITE}
+            SATANGL=${WOF_FIXROOT}/satbias_angle
+            SATINFO=${WOF_FIXROOT}/satinfo
+            OZINFO=${WOF_FIXROOT}/ozinfo
+            PCPINFO=${WOF_FIXROOT}/pcpinfo
+        #else
+        #    BERROR=${FIX_ROOT}/rap_berror_stats_global_RAP_tune
+        #    OBERROR=${FIX_ROOT}/HRRRENS_errtable.r3dv
+        #    CONVINFO=${FIX_ROOT}/HRRRENS_regional_convinfo.txt
+        #    ANAVINFO=${FIX_ROOT}/anavinfo_fv3_notlog_dbz_state_w_qc_exist_model_dbz.${CCPP_SUITE}
+        #    SATANGL=${FIX_ROOT}/global_satangbias.txt
+        #    SATINFO=${FIX_ROOT}/nam_regional_satinfo.txt
+        #    OZINFO=${FIX_ROOT}/global_ozinfo.txt
+        #    PCPINFO=${FIX_ROOT}/global_pcpinfo.txt
+        #fi
     fi
 
     SCANINFO=${FIX_ROOT}/global_scaninfo.txt

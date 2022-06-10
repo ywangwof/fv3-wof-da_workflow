@@ -46,7 +46,7 @@
        npy      = 351
        ntiles   = 1,
        npz_type = ''
-       npz    = 60
+       npz      = _NLEVS_
        !grid_type = -1
        make_nh = _MAKE_NH_
        fv_debug = .F.
@@ -86,7 +86,7 @@
        ke_bg = 0.
        do_vort_damp = .T.
        external_ic = _EXTERNAL_IC_
-       external_eta = .F.
+       external_eta = .T.
        gfs_phil = .false.
        nggps_ic = _NGGPS_IC_
        mountain = _MOUNTAIN_

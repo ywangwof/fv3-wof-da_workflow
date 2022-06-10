@@ -40,8 +40,8 @@ ln -sf ${ANLdir}/fv_tracer.res.tile1_new.nc .
 
 #${MPIRUN} -n ${PROC} -o ${BEGPROC} cp -f $GUESSdir/fv_core.res.tile1.nc fv_core.res.tile1.nc
 #${MPIRUN} -n ${PROC} -o ${BEGPROC} cp -f $GUESSdir/fv_tracer.res.tile1.nc fv_tracer.res.tile1.nc
-cp -f $GUESSdir/fv_core.res.tile1.nc fv_core.res.tile1.nc
-cp -f $GUESSdir/fv_tracer.res.tile1.nc fv_tracer.res.tile1.nc
+cp -f $GUESSdir/fv_core.res.tile1.nc    fv_core.res.tile1.nc
+cp -f $GUESSdir/fv_tracer.res.tile1.nc  fv_tracer.res.tile1.nc
 
 BNDY_IND=`basename $ANLdir/gfs_bndy.tile7.???.nc | cut -c16-18`
 cp $ANLdir/gfs_bndy.tile7.${BNDY_IND}.nc .
@@ -59,13 +59,11 @@ fi
 
 #Put new 000-h BC file and modified original restart files into ANLdir
 cp gfs_bndy.tile7.${BNDY_IND}_gsi.nc $ANLdir/
-mv -f fv_core.res.tile1.nc $ANLdir/fv_core.res.tile1.nc
-mv -f fv_tracer.res.tile1.nc $ANLdir/fv_tracer.res.tile1.nc
+cp -f fv_core.res.tile1.nc   $ANLdir/fv_core.res.tile1.nc
+cp -f fv_tracer.res.tile1.nc $ANLdir/fv_tracer.res.tile1.nc
 echo "Copying fv_core.res.nc from $GUESSdir to $ANLdir ..."
 cp -f $GUESSdir/fv_core.res.nc $ANLdir/fv_core.res.nc
-cp -f $GUESSdir/coupler.res $ANLdir/coupler.res
-     #mv -f fv3_grid_spec $ANLdir/grid_spec_new.nc
+cp -f $GUESSdir/coupler.res    $ANLdir/coupler.res
+#mv -f fv3_grid_spec $ANLdir/grid_spec_new.nc
 
 exit 0
-
-######### EOF ###########

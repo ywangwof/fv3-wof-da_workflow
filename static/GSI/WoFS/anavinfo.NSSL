@@ -5,7 +5,7 @@ met_guess::
   u        64       2         zonal_wind           u
   v        64       2         meridional_wind      v
   w        64       2         meridional_wind      w
-  t        64       2         virtual_temperature  t
+  tv       64       2         virtual_temperature  t
   q        64       2         specific_humidity    sphum
   oz       64       2         ozone                o3mr
   delp     64      -1         fv3 del pressure     delp
@@ -26,7 +26,7 @@ state_derivatives::
  ps   1      met_guess
  u    64     met_guess
  v    64     met_guess
- t    64     met_guess
+ tv   64     met_guess
  q    64     met_guess
  oz   64     met_guess
  prse 65     met_guess
@@ -36,56 +36,49 @@ state_tendencies::
 !var  levels  source
  u    64      met_guess
  v    64      met_guess
- t    64      met_guess
+ tv   64      met_guess
  q    64      met_guess
  oz   64      met_guess
  prse 65      met_guess
 ::
 
 state_vector::
-!var     level  itracer amedge source     funcof
- u        64      0       no     met_guess    u
- v        64      0       no     met_guess    v
- w        64      0       no     met_guess    w
- t        64      0       no     met_guess    tv
- tsen     64      0       no     met_guess    tv,q
- q        64      1       no     met_guess    q
- ps        1      0       no     met_guess    p3d
- sst       1      0       no     met_guess    sst
- qr       64      1       no     met_guess    qr
- ql       64      1       no     met_guess    qc
- qs       64      1       no     met_guess    qs
- qi       64      1       no     met_guess    qi
- qg       64      1       no     met_guess    qg
- qh       64      1       no     met_guess    qh
- dbz      64      1       no     met_guess    dbz
+!var     level  itracer source     funcof
+ u        64      0     met_guess    u
+ v        64      0     met_guess    v
+ w        64      0     met_guess    w
+ tv       64      0     met_guess    tv
+ tsen     64      0     met_guess    tv,q
+ q        64      1     met_guess    q
+! oz       64      1     met_guess    oz
+ prse     65      0     met_guess    prse
+ ps        1      0     met_guess    ps
+ qr       64      1     met_guess    qr
+ ql       64      1     met_guess    qc
+ qs       64      1     met_guess    qs
+ qi       64      1     met_guess    qi
+ qg       64      1     met_guess    qg
+ qh       64      1     met_guess    qh
+ dbz      64      1     met_guess    dbz
+! sst       1      0     met_guess    sst
 ::
 
 control_vector::
 !var     level  itracer as/tsfc_sdv  an_amp0   source  funcof
  sf       64      0       0.5         -1.0     state    u,v
  vp       64      0       0.5         -1.0     state    u,v
- ps        1      0       0.50        -1.0     state    p3d
+ ps        1      0       0.50        -1.0     state    prse
  t        64      0       0.70        -1.0     state    tv
  q        64      1       0.40        -1.0     state    q
- sst       1      0       1.00        -1.0     state    sst
- stl       1      0       1.00        -1.0     motley   sst
- sti       1      0       1.00        -1.0     motley   sst
-::
-
-control_vector_enkf::
-!var     level  itracer as/tsfc_sdv  an_amp0   source  funcof
- u        64      0       0.28       -1.0     state    u,v
- v        64      0       0.28       -1.0     state    u,v
- w        64      0       1.0         -1.0     state   w
- ps        1      0       0.50        -1.0     state   p3d
- t        64      0       0.70        -1.0     state   tv
- q        64      1       0.40        -1.0     state   q
- ql       64      1       1.0        -1.0     state    cw
+ w        64      0       1.0         -1.0     state    w
+ dbz      64      1       1.0        -1.0     state   dbz
  qr       64      1       1.0        -1.0     state    qr
  qs       64      1       1.0        -1.0     state    qs
  qi       64      1       1.0        -1.0     state    qi
  qg       64      1       1.0        -1.0     state    qg
  qh       64      1       1.0        -1.0     state    qh
- dbz      64      1       1.0        -1.0     state    dbz
+ ql       64      1       0.1        -1.0     state    qc
+! sst       1      0       1.00        -1.0     state    sst
+! stl       1      0       1.00        -1.0     motley   sst
+! sti       1      0       1.00        -1.0     motley   sst
 ::

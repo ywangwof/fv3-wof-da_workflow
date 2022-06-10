@@ -81,17 +81,17 @@ echo "WORK_ROOT = ${WORK_ROOT}"
 
 NUM_DOMAINS=1
 
-if [ ! "${CONV_ONLY}" ]; then
-   echo "ERROT: \$CONV_ONLY is not defined"
+if [ ! "${CONV_RADAR_FLAG}" ]; then
+   echo "ERROT: \$CONV_RADAR_FLAG is not defined"
    exit 1
 fi
-echo "CONV_ONLY = ${CONV_ONLY}"
+echo "CONV_RADAR_FLAG = ${CONV_RADAR_FLAG}"
 
-if [ ! "${RADAR_ONLY}" ]; then
-   echo "ERROT: \$RADAR_ONLY is not defined"
-   exit 1
-fi
-echo "RADAR_ONLY = ${RADAR_ONLY}"
+#if [ ! "${RADAR_ONLY}" ]; then
+#   echo "ERROT: \$RADAR_ONLY is not defined"
+#   exit 1
+#fi
+#echo "RADAR_ONLY = ${RADAR_ONLY}"
 
 gdate=$ANALYSIS_TIME
 YYYYMMDD=`echo $gdate | cut -c1-8`
@@ -116,12 +116,12 @@ GSI_EXE=${GSI_ROOT}/gsi.exe
  OBS_ROOT=${WORK_ROOT}/obsprd
  RADAR_REF=${OBS_ROOT}/Gridded_ref.nc
 
- if [ ${CONV_ONLY} -eq 1 ]; then
- PREPBUFR=${OBS_ROOT}/newgblav.${YYYYMMDD}.rap.t${HH}z.prepbufr
- if [ ! -r "${PREPBUFR}" ]; then
-   echo "ERROR: ${PREPBUFR} does not exist!"
-   exit 1
- fi
+ if [[ ${CONV_RADAR_FLAG} -eq 1 || ${CONV_RADAR_FLAG} -eq 3 ]]; then
+    PREPBUFR=${OBS_ROOT}/newgblav.${YYYYMMDD}.rap.t${HH}z.prepbufr
+    if [ ! -r "${PREPBUFR}" ]; then
+        echo "ERROR: ${PREPBUFR} does not exist!"
+        exit 1
+    fi
  fi
 
  #if [ ${RADAR_ONLY} -eq 1 ]; then
@@ -145,11 +145,11 @@ GSI_EXE=${GSI_ROOT}/gsi.exe
    exit 1
  fi
 
-if [ ${RADAR_ONLY} -eq 1 ]; then
-    GSI_NAMELIST=${GSI_ROOT}/comgsi_namelist_wof.sh
-elif [ ${CONV_ONLY} -eq 1 ]; then
-    GSI_NAMELIST=${GSI_ROOT}/comgsi_namelist_all.sh
-fi
+#if [ ${RADAR_ONLY} -eq 1 ]; then
+#    GSI_NAMELIST=${GSI_ROOT}/comgsi_namelist_wof.sh
+#elif [ ${CONV_ONLY} -eq 1 ]; then
+#    GSI_NAMELIST=${GSI_ROOT}/comgsi_namelist_all.sh
+#fi
 
 #if_clean=clean
 #if_observer=Yes
@@ -178,11 +178,11 @@ while [[ $ensmem -lt $end_member ]];do
         #
         # Create working directory
         #
-        if [ ${RADAR_ONLY} -eq 1 ]; then
-          workdir=${WORK_ROOT}/gsiprd_radar_d0${DOMAIN}/mem${ensmemid}
-        elif [ ${CONV_ONLY} -eq 1 ]; then
+        #if [ ${RADAR_ONLY} -eq 1 ]; then
+        #  workdir=${WORK_ROOT}/gsiprd_radar_d0${DOMAIN}/mem${ensmemid}
+        #elif [ ${CONV_ONLY} -eq 1 ]; then
           workdir=${WORK_ROOT}/gsiprd_d0${DOMAIN}/mem${ensmemid}
-        fi
+        #fi
 
         if [ -d "${workdir}" ]; then
           echo "Remove existing member directory"
@@ -211,11 +211,11 @@ while [[ $ensmem -lt $end_member ]];do
         ln -sf ${BK_DIR}/phy_data.nc fv3_phyvars
 
 
-        if [ ${CONV_ONLY} -eq 1 ]; then
+        #if [ ${CONV_ONLY} -eq 1 ]; then
           ANA_ROOT_DIR=${WORK_ROOT}/enkfprd_d01
-        elif [ ${RADAR_ONLY} -eq 1 ]; then
-          ANA_ROOT_DIR=${WORK_ROOT}/enkfprd_radar_d01
-        fi
+        #elif [ ${RADAR_ONLY} -eq 1 ]; then
+        #  ANA_ROOT_DIR=${WORK_ROOT}/enkfprd_radar_d01
+        #fi
 
         while [[ ! -d ${ANA_ROOT_DIR} ]]; do
             if [[ ${ensmem} -eq 1 ]]; then
@@ -235,13 +235,24 @@ while [[ $ensmem -lt $end_member ]];do
         cp -f ${BK_DIR}/fv_tracer.res.tile1_new.nc ${ANA_ROOT_DIR}/fv3sar_tile1_${member}_tracer
         cp -f ${BK_DIR}/phy_data.nc ${ANA_ROOT_DIR}/fv3sar_tile1_${member}_phyvar
 
-        if [ ${RADAR_ONLY} -eq 1 ]; then
+        if [[  ${CONV_RADAR_FLAG} -eq 2 || ${CONV_RADAR_FLAG} -eq 3 ]]; then
           ln -s ../dbzobs.nc .
           ln -s ../vrobs.nc .
           ln -s ../okmeso.mdf .
         fi
-        if [ ${CONV_ONLY} -eq 1 ]; then
-          ln -s ../prepbufr .
+
+        if [[ ${CONV_RADAR_FLAG} -eq 1 || ${CONV_RADAR_FLAG} -eq 3 ]]; then
+            ln -s ../prepbufr .
+            obsvar_str="!   dfile          dtype       dplat       dsis       dval     dthin   dsfcalc   time_window
+   prepbufr       ps          null      ps                   1.0     0      0           0.5
+   prepbufr       t           null      t                    1.0     0      0           0.5
+   prepbufr       uv          null      uv                   1.0     0      0           0.5
+   prepbufr       q           null      q                    1.0     0      0           0.5
+   prepbufr       spd         null      spd                  1.0     0      0           0.5
+   prepbufr       dw          null      dw                   1.0     0      0           0.5
+   prepbufr       sst         null      sst                  1.0     0      0           0.5"
+        else
+            obsvar_str="!   dfile          dtype       dplat       dsis       dval     dthin   dsfcalc   time_window"
         fi
         ln -s ../gsi.exe .
         ln -s ../anavinfo .
@@ -273,13 +284,91 @@ while [[ $ensmem -lt $end_member ]];do
         if_read_obs_save='.false.'
         if_read_obs_skip='.true.'
         . $GSI_NAMELIST
-        if [ ${CONV_ONLY} -eq 1 ]; then
-           comgsi_namelist1=$comgsi_namelist
-        elif [ ${RADAR_ONLY} -eq 1 ]; then
-           comgsi_namelist1=$comgsi_namelist_radar
-        fi
+        #if [ ${CONV_ONLY} -eq 1 ]; then
+        #   comgsi_namelist1=$comgsi_namelist
+        #elif [ ${RADAR_ONLY} -eq 1 ]; then
+        #   comgsi_namelist1=$comgsi_namelist_radar
+        #fi
+        # define namelist for gsi
         cat << EOF > gsiparm.anl
- $comgsi_namelist1
+ &SETUP
+   miter=${nummiter},niter(1)=10,niter(2)=10,
+   write_diag(1)=.true.,write_diag(2)=.false.,write_diag(3)=.true.,
+   gencode=78,qoption=2,
+   factqmin=0.0,factqmax=0.0,
+   iguess=-1,
+   oneobtest=.false.,retrieval=.false.,
+   nhr_assimilation=3,l_foto=.false.,
+   use_pbl=.false.,
+   lread_obs_save=${if_read_obs_save},lread_obs_skip=${if_read_obs_skip},
+   if_model_dbz=.true., static_gsi_nopcp_dbz=0.0,
+   rmesh_dbz=4.0,rmesh_vr=4.0,zmesh_dbz=1000.0,zmesh_vr=1000.0,
+   missing_to_nopcp=.true.,diag_radardbz=.t.,
+   use_fv3_cloud=.t.,
+
+   !doradaroneob=.true., oneobddiff=20., oneobvalue=-999.,
+ /
+ &GRIDOPTS
+   JCAP=62,JCAP_B=62,NLAT=60,NLON=60,nsig=60,regional=.true.,
+   wrf_nmm_regional=${bk_core_nmm},wrf_mass_regional=${bk_core_arw},
+   nems_nmmb_regional=${bk_core_nmmb},nmmb_reference_grid='H',diagnostic_reg=.false.,
+   diagnostic_reg=.false.,regional=.true.,
+   filled_grid=.false.,half_grid=.true.,netcdf=${bk_if_netcdf},fv3_regional=${bk_core_fv3},
+ /
+ &BKGERR
+   vs=${vs_op}
+   hzscl=${hzscl_op}
+   bw=0.,fstat=.true.,
+ /
+ &ANBKGERR
+   anisotropic=.false.,an_vs=1.0,ngauss=1,
+   an_flen_u=-5.,an_flen_t=3.,an_flen_z=-200.,
+   ifilt_ord=2,npass=3,normal=-200,grid_ratio=4.,nord_f2a=4,
+ /
+ &JCOPTS
+ /
+ &STRONGOPTS
+   nstrong=0,nvmodes_keep=20,period_max=3.,
+   baldiag_full=.true.,baldiag_inc=.true.,
+ /
+ &OBSQC
+   dfact=0.75,dfact1=3.0,noiqc=.false.,c_varqc=0.02,vadfile='prepbufr',
+ /
+ &OBS_INPUT
+   dmesh(1)=120.0,dmesh(2)=60.0,dmesh(3)=60.0,dmesh(4)=60.0,dmesh(5)=120,
+   ext_sonde=.true.,
+   time_window_max=0.45,
+ /
+OBS_INPUT::
+${obsvar_str}
+    okmeso.mdf      okt          null        okt       1.0      0       0         0.125
+    okmeso.mdf      oktd         null        oktd      1.0      0       0         0.125
+    okmeso.mdf      okuv         null        okuv      1.0      0       0         0.125
+    okmeso.mdf      okps         null        okps      1.0      0       0         0.125
+    dbzobs.nc       dbz          null        dbz       1.0      0       0         0.04166666667
+    vrobs.nc        rw           null        rw        1.0      0       0         0.11666666667
+::
+&SUPEROB_RADAR
+   del_azimuth=5.,del_elev=.25,del_range=5000.,del_time=.5,elev_angle_max=5.,minnum=50,range_max=100000.,
+   l2superob_only=.false.,
+ /
+ &LAG_DATA
+ /
+ &HYBRID_ENSEMBLE
+   l_hyb_ens=.false.,
+ /
+ &RAPIDREFRESH_CLDSURF
+ /
+ &CHEM
+ /
+ &SINGLEOB_TEST
+   maginnov=1.0,magoberr=0.8,oneob_type='t',
+   oblat=38.,oblon=279.,obpres=500.,obdattim=${ANAL_TIME},
+   obhourset=0.,
+ /
+ &NST
+ /
+
 EOF
         echo ' Run GSI for member ', ${ensmemid}
         itry=1

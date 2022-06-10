@@ -108,7 +108,7 @@
     !nord_zs_filter = 4
     npx = 351
     npy = 351
-    npz = 60
+    npz = _NLEVS_
     ntiles = 1
     nudge_qv = .false.
     nwat = 6

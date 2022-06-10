@@ -67,34 +67,41 @@ ensnum=${ENSEMBLE_SIZE}
 
 echo "calculate ensemble mean using gen_be_ensmean.exe"
 
-DOMAIN=1
+#if [ ${IF_CONV} -eq 0 ] ; then
+#  ENKF_ROOT=${WORK_ROOT}/enkfprd_radar_d0${DOMAIN}
+#else
+#  ENKF_ROOT=${WORK_ROOT}/enkfprd_d01
+#fi
 
-if [ ${IF_CONV} -eq 0 ] ; then
-  ENKF_ROOT=${WORK_ROOT}/enkfprd_radar_d0${DOMAIN}
-else
-  ENKF_ROOT=${WORK_ROOT}/enkfprd_d0${DOMAIN}
+ENKF_ROOT=${WORK_ROOT}/enkfprd_d01
+if [[ -r ${ENKF_ROOT} ]]; then
+    rm -rf ${ENKF_ROOT}
 fi
-${MKDIR} -p ${ENKF_ROOT}
+
+mkdir -p ${ENKF_ROOT}
 cd ${ENKF_ROOT}
 
-rm -f ${ENKF_ROOT}/ensmean_finished
+#if [[ -e ${ENKF_ROOT}/ensmean_finished ]]; then
+#    rm -f ${ENKF_ROOT}/ensmean_finished
+#fi
 
-if [ ! -e ${WORK_ROOT}/fv3prd_mem0001/ANA/fv_core.res.tile1_new.nc ]; then
-   FGdir=GUESS
-else
-   FGdir=ANA
-fi
+#if [ ! -e ${WORK_ROOT}/fv3prd_mem0001/ANA/fv_core.res.tile1_new.nc ]; then
+#   FGdir=GUESS
+#else
+#   FGdir=ANA
+#fi
+
+echo "Linking file from ${WORK_ROOT}/fv3prd_mem00??/GUESS to "
+pwd
 
 imem=1
-while [ ${imem} -le ${ensnum} ]; do
-  memstr4=`printf %04i ${imem}`
-  memstr3=`printf %03i ${imem}`
-  FG_MEM=${WORK_ROOT}/fv3prd_mem${memstr4}/${FGdir}/fv_core.res.tile1_new.nc
-  ${LN} -sf ${FG_MEM} fv3sar_tile1_mem${memstr3}_dynvar
-  FG_MEM=${WORK_ROOT}/fv3prd_mem${memstr4}/${FGdir}/fv_tracer.res.tile1_new.nc
-  ${LN} -sf ${FG_MEM} fv3sar_tile1_mem${memstr3}_tracer
-  FG_MEM=${WORK_ROOT}/fv3prd_mem${memstr4}/${FGdir}/phy_data.nc
-  ${LN} -sf ${FG_MEM} fv3sar_tile1_mem${memstr3}_phyvar
+while [[ ${imem} -le ${ensnum} ]]; do
+  memstr4=$(printf "%04d" ${imem})
+  memstr3=$(printf "%03d" ${imem})
+  FG_DIR="${WORK_ROOT}/fv3prd_mem${memstr4}/GUESS"
+  ${CP} ${FG_DIR}/fv_core.res.tile1_new.nc   ./fv3sar_tile1_mem${memstr3}_dynvar
+  ${CP} ${FG_DIR}/fv_tracer.res.tile1_new.nc ./fv3sar_tile1_mem${memstr3}_tracer
+  ${CP} ${FG_DIR}/phy_data.nc                ./fv3sar_tile1_mem${memstr3}_phyvar
   (( imem = imem + 1 ))
 done
 
@@ -187,7 +194,7 @@ done
 fi
 
 ensmeandone_num=`grep ensmean_done ./ensmean.output_* 2>/dev/null | wc -l`
-echo "Checking ${varnum} within firstguess_ensmean.ksh, get ${ensmeandone_num} ..."
+echo "Checking ${varnum} within firstguess_ensmean.sh, get ${ensmeandone_num} ..."
 while [ ${ensmeandone_num} -lt ${varnum} ]; do
   sleep 3
   ensmeandone_num=`grep ensmean_done ./ensmean.output_* 2>/dev/null | wc -l`

@@ -281,6 +281,7 @@ while [[ $ensmem -lt $end_member ]];do
  sed 's/_NSTF2_/'${nstf2}'/g'         | \
  sed 's/_WARM_START_/'${warm_start}'/g' | \
  sed 's/_WRITE_BCS_/'${writebcs}'/g'    | \
+ sed 's/_NLEVS_/'${NLEVS}'/g'    | \
  sed 's/_BCS_GSI_/'${bcsgsi}'/g'  > ./input.nml
 
  source ${FV3LAM_STATIC}/Fix_sar.${eventdate}/model_grid.${eventdate}
@@ -313,4 +314,3 @@ done
 
 exit 0
 
-######### EOF ###########

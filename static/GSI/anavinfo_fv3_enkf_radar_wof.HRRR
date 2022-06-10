@@ -14,10 +14,6 @@ met_guess::
   qs       64      10         snow              QSNOW
   qi       64      10         ice               QICE
   qg       64      10         graupel           QGRAUP
-  qh       64      10         hail              QHAIL
-  qnr      64      10         rain number          rain_nc
-  qni      64      10         ice number           ice_nc
-  qnl      64      10         drop number          water_nc
   dbz      64      10         reflectivity      REFL_10CM
 ::
 
@@ -57,7 +53,6 @@ state_vector::
  qs       64      1       no     met_guess    qs
  qi       64      1       no     met_guess    qi
  qg       64      1       no     met_guess    qg
- qh       64      1       no     met_guess    qh
  dbz      64      1       no     met_guess    dbz
 ::
 
@@ -86,6 +81,5 @@ control_vector_enkf::
  qs       64      1       1.0        -1.0     state    qs
  qi       64      1       1.0        -1.0     state    qi
  qg       64      1       1.0        -1.0     state    qg
- qh       64      1       1.0        -1.0     state    qh
  dbz      64      1       1.0        -1.0     state    dbz
 ::

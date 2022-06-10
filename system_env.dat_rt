@@ -11,8 +11,8 @@
   #usrname=tg826358
 
   source /lfs4/NAGAPE/hpc-wof1/ywang/EPIC2/oumap/ufs-srweather-app/env/build_jet_intel.env
-  module use -a /lfs4/NAGAPE/hpc-wof1/ywang/EPIC2/oumap/ufs-srweather-app/env
-  module load build_jet.env
+  #module use -a /lfs4/NAGAPE/hpc-wof1/ywang/EPIC2/oumap/ufs-srweather-app/env
+  #module load build_jet.env
   module load pnetcdf/1.11.2
 
   #todaydate=20200515
@@ -85,7 +85,7 @@
   # ---
   nlon=356
   nlat=356
-  nlev=60
+  nlev=64
 
   # --- DA conf.
   # ---

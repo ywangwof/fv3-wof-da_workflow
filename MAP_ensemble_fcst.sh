@@ -188,6 +188,7 @@ for ((i=bgnsec;i<=endsec;i+=3600)); do
   export ENS_MEMNUM_THIS=1
   export PROC=${corenum}
   export CCPP_SUITE=${CCPP_SUITE}
+  export NLEVS=${nlev}
 
   memstr4=${memstr4}
 

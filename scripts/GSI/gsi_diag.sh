@@ -86,17 +86,17 @@ echo "WORK_ROOT = ${WORK_ROOT}"
 
 NUM_DOMAINS=1
 
-if [ ! "${CONV_ONLY}" ]; then
-   echo "ERROT: \$CONV_ONLY is not defined"
+if [ ! "${CONV_RADAR_FLAG}" ]; then
+   echo "ERROT: \$CONV_RADAR_FLAG is not defined"
    exit 1
 fi
-echo "CONV_ONLY = ${CONV_ONLY}"
+echo "CONV_RADAR_FLAG = ${CONV_RADAR_FLAG}"
 
-if [ ! "${RADAR_ONLY}" ]; then
-   echo "ERROT: \$RADAR_ONLY is not defined"
-   exit 1
-fi
-echo "RADAR_ONLY = ${RADAR_ONLY}"
+#if [ ! "${RADAR_ONLY}" ]; then
+#   echo "ERROT: \$RADAR_ONLY is not defined"
+#   exit 1
+#fi
+#echo "RADAR_ONLY = ${RADAR_ONLY}"
 
 gdate=$ANALYSIS_TIME
 YYYYMMDD=`echo $gdate | cut -c1-8`
@@ -122,7 +122,7 @@ ensnum=${ENSEMBLE_SIZE}
  RADAR_REF=${OBS_ROOT}/Gridded_ref.nc
  RADAR_VR=${OBS_ROOT}/vr_vol
 
- if [ ${CONV_ONLY} -eq 1 ]; then
+ if [[ ${CONV_RADAR_FLAG} -eq 1 || ${CONV_RADAR_FLAG} -eq 3 ]]; then
    PREPBUFR=${OBS_ROOT}/newgblav.${YYYYMMDD}.rap.t${HH}z.prepbufr
    if [ ! -r "${PREPBUFR}" ]; then
      echo "ERROR: ${PREPBUFR} does not exist!"
@@ -162,15 +162,18 @@ while [[ $DOMAIN -le $NUM_DOMAINS ]];do
 
     echo "DOMAIN = ${DOMAIN}"
 
-    if [ ${CONV_ONLY} -eq 1 ]; then
-        BK_ROOT=${WORK_ROOT}/enkfprd_d0${DOMAIN}
-        workdir=${WORK_ROOT}/gsiprd_d0${DOMAIN}
-        GSI_NAMELIST=${GSI_ROOT}/comgsi_namelist_all.sh
-    elif [ ${RADAR_ONLY} -eq 1 ]; then
-        BK_ROOT=${WORK_ROOT}/enkfprd_radar_d0${DOMAIN}
-        workdir=${WORK_ROOT}/gsiprd_radar_d0${DOMAIN}
-        GSI_NAMELIST=${GSI_ROOT}/comgsi_namelist_wof.sh
-    fi
+    #if [ ${CONV_ONLY} -eq 1 ]; then
+    #    BK_ROOT=${WORK_ROOT}/enkfprd_d0${DOMAIN}
+    #    workdir=${WORK_ROOT}/gsiprd_d0${DOMAIN}
+    #    GSI_NAMELIST=${GSI_ROOT}/comgsi_namelist_all.sh
+    #elif [ ${RADAR_ONLY} -eq 1 ]; then
+    #    BK_ROOT=${WORK_ROOT}/enkfprd_radar_d0${DOMAIN}
+    #    workdir=${WORK_ROOT}/gsiprd_radar_d0${DOMAIN}
+    #    GSI_NAMELIST=${GSI_ROOT}/comgsi_namelist_wof.sh
+    #fi
+    BK_ROOT=${WORK_ROOT}/enkfprd_d0${DOMAIN}
+    workdir=${WORK_ROOT}/gsiprd_d0${DOMAIN}
+    GSI_NAMELIST=${GSI_ROOT}/comgsi_namelist_wof.sh
 
     BK_DYNVAR_FILE=${BK_ROOT}/fv3sar_tile1_ensmean_dynvar
     if [ ! -r "${BK_DYNVAR_FILE}" ]; then
@@ -191,15 +194,26 @@ while [[ $DOMAIN -le $NUM_DOMAINS ]];do
     #
     # Copy obs data to fixed file names
     #
-    if [ ${RADAR_ONLY} -eq 1 ]; then
-        #cp -f ${RADAR_REF} ./dbzobs.nc
-        #${LN} -sf ${RADAR_VR} .
+    #cp -f ${RADAR_REF} ./dbzobs.nc
+    #${LN} -sf ${RADAR_VR} .
+    if [[ ${CONV_RADAR_FLAG} -eq 1 || ${CONV_RADAR_FLAG} -eq 3 ]]; then
+        ln -s ${PREPBUFR} ./prepbufr
+        obsvar_str="!   dfile          dtype       dplat       dsis       dval     dthin   dsfcalc   time_window
+   prepbufr       ps          null      ps                   1.0     0      0           0.5
+   prepbufr       t           null      t                    1.0     0      0           0.5
+   prepbufr       uv          null      uv                   1.0     0      0           0.5
+   prepbufr       q           null      q                    1.0     0      0           0.5
+   prepbufr       spd         null      spd                  1.0     0      0           0.5
+   prepbufr       dw          null      dw                   1.0     0      0           0.5
+   prepbufr       sst         null      sst                  1.0     0      0           0.5"
+    else
+        obsvar_str="!   dfile          dtype       dplat       dsis       dval     dthin   dsfcalc   time_window"
+    fi
+
+    if [[ ${CONV_RADAR_FLAG} -eq 2 || ${CONV_RADAR_FLAG} -eq 3 ]]; then
         cp -f ${OBS_ROOT}/obs_seq_RF_${ANALYSIS_TIME}.nc        dbzobs.nc
         cp -f ${OBS_ROOT}/obs_seq_VR_${ANALYSIS_TIME}.nc        vrobs.nc
         cp -f ${OBS_ROOT}/mesonet.realtime.${ANALYSIS_TIME}.mdf okmeso.mdf
-    fi
-    if [ ${CONV_ONLY} -eq 1 ]; then
-        ln -s ${PREPBUFR} ./prepbufr
     fi
 
     # Bring over background field
@@ -214,31 +228,42 @@ while [[ $DOMAIN -le $NUM_DOMAINS ]];do
 
 
     echo "Link fixed and CRTM coefficient files to working directory"
-    if [ ${CONV_ONLY} -eq 1 ]; then
-        BERROR=${FIX_ROOT}/rap_berror_stats_global_RAP_tune
-        OBERROR=${FIX_ROOT}/HRRRENS_errtable.r3dv
-        CONVINFO=${FIX_ROOT}/HRRRENS_regional_convinfo.txt
+    #if [ ${CONV_ONLY} -eq 1 ]; then
+    #    BERROR=${FIX_ROOT}/rap_berror_stats_global_RAP_tune
+    #    OBERROR=${FIX_ROOT}/HRRRENS_errtable.r3dv
+    #    CONVINFO=${FIX_ROOT}/HRRRENS_regional_convinfo.txt
+    #
+    #    ANAVINFO=${FIX_ROOT}/anavinfo_fv3_enkf_con
+    #    OBERROR=${FIX_ROOT}/HRRRENS_errtable.r3dv_conv
+    #    CONVINFO=${FIX_ROOT}/HRRRENS_regional_convinfo.3km.txt_conv
+    #
+    #    SATANGL=${FIX_ROOT}/global_satangbias.txt
+    #    SATINFO=${FIX_ROOT}/nam_regional_satinfo.txt
+    #    OZINFO=${FIX_ROOT}/global_ozinfo.txt
+    #    PCPINFO=${FIX_ROOT}/global_pcpinfo.txt
+    #fi
 
-        ANAVINFO=${FIX_ROOT}/anavinfo_fv3_enkf_con
-        OBERROR=${FIX_ROOT}/HRRRENS_errtable.r3dv_conv
-        CONVINFO=${FIX_ROOT}/HRRRENS_regional_convinfo.3km.txt_conv
-
-        SATANGL=${FIX_ROOT}/global_satangbias.txt
-        SATINFO=${FIX_ROOT}/nam_regional_satinfo.txt
-        OZINFO=${FIX_ROOT}/global_ozinfo.txt
-        PCPINFO=${FIX_ROOT}/global_pcpinfo.txt
-    fi
-
-    if [ ${RADAR_ONLY} -eq 1 ]; then
-        BERROR=${WOF_FIXROOT}/berror_stats
-        OBERROR=${WOF_FIXROOT}/errtable
-        CONVINFO=${WOF_FIXROOT}/convinfo
-        ANAVINFO=${WOF_FIXROOT}/anavinfo
-        SATANGL=${WOF_FIXROOT}/satbias_angle
-        SATINFO=${WOF_FIXROOT}/satinfo
-        OZINFO=${WOF_FIXROOT}/ozinfo
-        PCPINFO=${WOF_FIXROOT}/pcpinfo
-    fi
+    #if [ ${RADAR_ONLY} -eq 1 ]; then
+        #if [[ "${CCPP_SUITE}" =~ "NSSL" ]]; then
+            BERROR=${WOF_FIXROOT}/berror_stats
+            OBERROR=${WOF_FIXROOT}/errtable
+            CONVINFO=${WOF_FIXROOT}/convinfo
+            ANAVINFO=${WOF_FIXROOT}/anavinfo.${CCPP_SUITE}
+            SATANGL=${WOF_FIXROOT}/satbias_angle
+            SATINFO=${WOF_FIXROOT}/satinfo
+            OZINFO=${WOF_FIXROOT}/ozinfo
+            PCPINFO=${WOF_FIXROOT}/pcpinfo
+        #else
+        #    BERROR=${FIX_ROOT}/rap_berror_stats_global_RAP_tune
+        #    OBERROR=${FIX_ROOT}/HRRRENS_errtable.r3dv
+        #    CONVINFO=${FIX_ROOT}/HRRRENS_regional_convinfo.txt
+        #    ANAVINFO=${FIX_ROOT}/anavinfo_fv3_notlog_dbz_state_w_qc_exist_model_dbz.${CCPP_SUITE}
+        #    SATANGL=${FIX_ROOT}/global_satangbias.txt
+        #    SATINFO=${FIX_ROOT}/nam_regional_satinfo.txt
+        #    OZINFO=${FIX_ROOT}/global_ozinfo.txt
+        #    PCPINFO=${FIX_ROOT}/global_pcpinfo.txt
+        #fi
+    #fi
 
     SCANINFO=${FIX_ROOT}/global_scaninfo.txt
     ln -sf $ANAVINFO anavinfo
@@ -280,15 +305,92 @@ while [[ $DOMAIN -le $NUM_DOMAINS ]];do
     # Build the GSI namelist on-the-fly
     . $GSI_NAMELIST
 
-    if [ ${CONV_ONLY} -eq 1 ]; then
-       comgsi_namelist1=$comgsi_namelist
-    fi
-    if [ ${RADAR_ONLY} -eq 1 ]; then
-       comgsi_namelist1=$comgsi_namelist_radar
-    fi
+    #if [ ${CONV_ONLY} -eq 1 ]; then
+    #   comgsi_namelist1=$comgsi_namelist
+    #fi
+    #if [ ${RADAR_ONLY} -eq 1 ]; then
+    #   comgsi_namelist1=$comgsi_namelist_radar
+    #fi
 
+    # define namelist for gsi
      cat << EOF > gsiparm.anl
- $comgsi_namelist1
+ &SETUP
+   miter=${nummiter},niter(1)=10,niter(2)=10,
+   write_diag(1)=.true.,write_diag(2)=.false.,write_diag(3)=.true.,
+   gencode=78,qoption=2,
+   factqmin=0.0,factqmax=0.0,
+   iguess=-1,
+   oneobtest=.false.,retrieval=.false.,
+   nhr_assimilation=3,l_foto=.false.,
+   use_pbl=.false.,
+   lread_obs_save=${if_read_obs_save},lread_obs_skip=${if_read_obs_skip},
+   if_model_dbz=.true., static_gsi_nopcp_dbz=0.0,
+   rmesh_dbz=4.0,rmesh_vr=4.0,zmesh_dbz=1000.0,zmesh_vr=1000.0,
+   missing_to_nopcp=.true.,diag_radardbz=.t.,
+   use_fv3_cloud=.t.,
+
+   !doradaroneob=.true., oneobddiff=20., oneobvalue=-999.,
+ /
+ &GRIDOPTS
+   JCAP=62,JCAP_B=62,NLAT=60,NLON=60,nsig=60,regional=.true.,
+   wrf_nmm_regional=${bk_core_nmm},wrf_mass_regional=${bk_core_arw},
+   nems_nmmb_regional=${bk_core_nmmb},nmmb_reference_grid='H',diagnostic_reg=.false.,
+   diagnostic_reg=.false.,regional=.true.,
+   filled_grid=.false.,half_grid=.true.,netcdf=${bk_if_netcdf},fv3_regional=${bk_core_fv3},
+ /
+ &BKGERR
+   vs=${vs_op}
+   hzscl=${hzscl_op}
+   bw=0.,fstat=.true.,
+ /
+ &ANBKGERR
+   anisotropic=.false.,an_vs=1.0,ngauss=1,
+   an_flen_u=-5.,an_flen_t=3.,an_flen_z=-200.,
+   ifilt_ord=2,npass=3,normal=-200,grid_ratio=4.,nord_f2a=4,
+/
+ &JCOPTS
+ /
+ &STRONGOPTS
+   nstrong=0,nvmodes_keep=20,period_max=3.,
+   baldiag_full=.true.,baldiag_inc=.true.,
+ /
+ &OBSQC
+   dfact=0.75,dfact1=3.0,noiqc=.false.,c_varqc=0.02,vadfile='prepbufr',
+ /
+ &OBS_INPUT
+   dmesh(1)=120.0,dmesh(2)=60.0,dmesh(3)=60.0,dmesh(4)=60.0,dmesh(5)=120,
+   ext_sonde=.true.,
+   time_window_max=0.45,
+ /
+OBS_INPUT::
+${obsvar_str}
+    okmeso.mdf      okt          null        okt       1.0      0       0         0.125
+    okmeso.mdf      oktd         null        oktd      1.0      0       0         0.125
+    okmeso.mdf      okuv         null        okuv      1.0      0       0         0.125
+    okmeso.mdf      okps         null        okps      1.0      0       0         0.125
+    dbzobs.nc       dbz          null        dbz       1.0      0       0         0.04166666667
+    vrobs.nc        rw           null        rw        1.0      0       0         0.11666666667
+::
+&SUPEROB_RADAR
+   del_azimuth=5.,del_elev=.25,del_range=5000.,del_time=.5,elev_angle_max=5.,minnum=50,range_max=100000.,
+   l2superob_only=.false.,
+ /
+ &LAG_DATA
+ /
+ &HYBRID_ENSEMBLE
+   l_hyb_ens=.false.,
+ /
+ &RAPIDREFRESH_CLDSURF
+ /
+ &CHEM
+ /
+ &SINGLEOB_TEST
+   maginnov=1.0,magoberr=0.8,oneob_type='t',
+   oblat=38.,oblon=279.,obpres=500.,obdattim=${ANAL_TIME},
+   obhourset=0.,
+ /
+ &NST
+ /
 EOF
 
     ###################################################

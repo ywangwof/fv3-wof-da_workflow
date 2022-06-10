@@ -35,7 +35,9 @@ print_help () {
   exit $1
 }
 
-function join_by { local IFS="$1"; shift; echo "$*"; }
+function join_by {
+    local IFS="$1"; shift; echo "$*";
+}
 
 SH=/bin/sh
 
@@ -461,6 +463,10 @@ EOF
     fi
 fi
 
+#-----------------------------------------------------------------------
+# DA cycles start here
+#-----------------------------------------------------------------------
+
 icycle=$istart
 
 if [ ${if_gotofcst} == 'no' ]; then
@@ -488,6 +494,8 @@ if [ ${if_gotofcst} == 'no' ]; then
             export "if_skip_$cmd=no"
         done
     fi
+
+    if_skip_recenter=yes
 
     #echo "$istart, $iend, $icycle"
     #echo "${commands[@]}"
@@ -520,18 +528,18 @@ if [ ${if_gotofcst} == 'no' ]; then
 
     if [ ${thiscycle} -lt ${radar_cycle_date} ]; then
        both_conv_radar=0
-       conv_only=1
-       radar_only=0
+       #conv_only=1
+       #radar_only=0
        if_skip_radarobs="yes"
     elif [[ "$minthis" == "00" ]]; then
-       both_conv_radar=1
-       conv_only=0
-       radar_only=0
+       both_conv_radar=3
+       #conv_only=0
+       #radar_only=0
        if_skip_convobs="no"
     else
-       both_conv_radar=0
-       conv_only=0
-       radar_only=1
+       both_conv_radar=2
+       #conv_only=0
+       #radar_only=1
        if_skip_convobs="yes"
     fi
 
@@ -660,6 +668,7 @@ if [ ${if_gotofcst} == 'no' ]; then
   export ENS_MEMNUM_THIS=1
   export PROC=${corenum}
   export CCPP_SUITE=${CCPP_SUITE}
+  export NLEVS=${nlev}
 
   rm -f \${DATAHOME}/${lastcycle}/fv3prd_mem${memstr4}/FAILED \${DATAHOME}/${lastcycle}/fv3prd_mem${memstr4}/SUCCESS
 
@@ -729,58 +738,37 @@ EOF
 
     fi
 
-    if [ ${both_conv_radar} -eq 1 ]; then
-      conv_only=0
-      radar_only=0
-    fi
+    #if [ ${both_conv_radar} -eq 1 ]; then
+    #  conv_only=0
+    #  radar_only=0
+    #fi
 
-    if [ ${both_conv_radar} -eq 1 ] || [ $conv_only -eq 1 ] ; then
-      conv_radar_flag=1
-    elif [ $radar_only -eq 1 ]; then
-      conv_radar_flag=2
-    fi
+    #if [ ${both_conv_radar} -eq 1 ]; then
+    #  conv_radar_flag=3
+    #elif [ $radar_only -eq 1 ]; then
+    #  conv_radar_flag=2
+    #fi
+    conv_radar_flag=${both_conv_radar}    # 0 : No da; 1: conv only, 2: radar only, 3: both conv & radar
 
-    while [ ${conv_radar_flag} -le 2 ]; do
+    #while [ ${conv_radar_flag} -le 2 ]; do
 
         if [ ${conv_radar_flag} -eq 1 ] ; then
-          if_conv=1
-          if_radar=0
+          #if_conv=1
+          #if_radar=0
           NVARNUM=6
           NVARNUM1=14
-          IF_STATIC_BEC=no
-          #
-          NODENUM_hyb=60
-          TASKNUM_hyb=240
-          QUEUE_hyb=${QUEUE1}
-          RESNAME_hyb=${RESNAME_skx}
-          OMPTHREADS_hyb=14
 
-          NODENUM_enkf=60
           TASKNUM_enkf=72
-          QUEUE_enkf=${QUEUE1}
-          RESNAME_enkf=${RESNAME_skx}
-          OMPTHREADS_enkf=56
-
-        elif [ ${conv_radar_flag} -eq 2 ]; then
-          if_conv=0
-          if_radar=1
+        elif [[ ${conv_radar_flag} -eq 2 || ${conv_radar_flag} -eq 3 ]]; then
+          #if_conv=0
+          #if_radar=1
           NVARNUM=14
           NVARNUM1=14
-          IF_STATIC_BEC=${STATIC_BEC}
 
-          #
-          NODENUM_hyb=60
-          TASKNUM_hyb=240
-          QUEUE_hyb=${QUEUE1}
-          RESNAME_hyb=${RESNAME_skx}
-          OMPTHREADS_hyb=14
-
-          NODENUM_enkf=60
           TASKNUM_enkf=60
-          QUEUE_enkf=${QUEUE1}
-          RESNAME_enkf=${SBATCH_OPT}
-          OMPTHREADS_enkf=14
-
+        else
+            echo "ERROR: unsupported \${conv_radar_flag}=${conv_radar_flag}."
+            exit 0
         fi
 
 
@@ -788,7 +776,7 @@ EOF
           echo "$(date +%Y-%m-%d_%H:%M): Calculate mean of first-guess ensemble for cycle ${thiscycle}"
           rm -f ${DATABASE_DIR}/cycle/${thiscycle}/ensmeanFAILED ${DATABASE_DIR}/cycle/${thiscycle}/ensmeanSUCCESS
 
-          cat << EOF > ${SBATCHSELLDIR}/fg_mean${thiscycle}_${conv_radar_flag}.sh
+          cat << EOF > ${SBATCHSELLDIR}/fg_mean${thiscycle}.sh
 #!/bin/bash
 #SBATCH -A ${ACCOUNT}
 #SBATCH -J fgmean_${thiscycletime}
@@ -806,7 +794,7 @@ EOF
   export WORK_ROOT=\${DATAHOME}/\${ANALYSIS_TIME}
   export NUM_DOMAINS=1
   export NVAR=${NVARNUM1}
-  export IF_CONV=${if_conv}
+  export CONV_RADAR_FLAG=${conv_radar_flag}
   export PROC=48
   export CCPP_SUITE=${CCPP_SUITE}
 
@@ -826,7 +814,7 @@ EOF
           #chmod u+x ${SBATCHSELLDIR}/fg_mean${thiscycle}_${conv_radar_flag}.sh
           #${SH} ${SBATCHSELLDIR}/fg_mean${thiscycle}_${conv_radar_flag}.sh >& ${SBATCHSELLDIR}/fg_mean${thiscycle}_${conv_radar_flag}.log
 
-          sbatch ${SBATCHSELLDIR}/fg_mean${thiscycle}_${conv_radar_flag}.sh
+          sbatch ${SBATCHSELLDIR}/fg_mean${thiscycle}.sh
 
         fi
 
@@ -836,13 +824,13 @@ EOF
         done
         touch ${SBATCHSELLDIR}/FG_mean_ready
 
-        if [ ${conv_radar_flag} -eq 2 ]; then
-           gsiprdname="gsiprd_radar_d01"
-           enkfprdname="enkfprd_radar_d01"
-        else
+        #if [ ${conv_radar_flag} -eq 2 ]; then
+        #   gsiprdname="gsiprd_radar_d01"
+        #   enkfprdname="enkfprd_radar_d01"
+        #else
            gsiprdname="gsiprd_d01"
            enkfprdname="enkfprd_d01"
-        fi
+        #fi
 
         if [ ${if_skip_gsimean} == 'no' ]; then
 
@@ -858,12 +846,12 @@ EOF
           echo "$(date +%Y-%m-%d_%H:%M): Generate Hx for ensmean for cycle ${thiscycle}"
           rm -f ${DATABASE_DIR}/cycle/${thiscycle}/${gsiprdname}/gsimeanFAILED ${DATABASE_DIR}/cycle/${thiscycle}/${gsiprdname}/gsimeanSUCCESS
 
-          cat << EOF > ${SBATCHSELLDIR}/gsi_mean${thiscycle}_${conv_radar_flag}.sh
+          cat << EOF > ${SBATCHSELLDIR}/gsi_mean${thiscycle}.sh
 #!/bin/bash
 #SBATCH -A ${ACCOUNT}
 #SBATCH -J gsimean_${thiscycletime}
-#SBATCH -o ./jobgsi_mean${thiscycle}_${conv_radar_flag}_%j.out
-#SBATCH -e ./jobgsi_mean${thiscycle}_${conv_radar_flag}_%j.err
+#SBATCH -o ./jobgsi_mean${thiscycle}_%j.out
+#SBATCH -e ./jobgsi_mean${thiscycle}_%j.err
 #SBATCH -n ${corenum}
 #SBATCH --partition=${QUEUE}
 #SBATCH -t 01:30:00
@@ -874,9 +862,7 @@ EOF
   export STATIC_DIR_GSI=${STATIC_DIR_GSI}
   export ANALYSIS_TIME=${thiscycle}
   export WORK_ROOT=\${DATAHOME}/\${ANALYSIS_TIME}
-  export CONV_RADAR=0
-  export RADAR_ONLY=${if_radar}
-  export CONV_ONLY=${if_conv}
+  export CONV_RADAR_FLAG=${conv_radar_flag}
   export PROC=${corenum}
   export CCPP_SUITE=${CCPP_SUITE}
 
@@ -895,7 +881,7 @@ EOF
 
           #chmod u+x ${SBATCHSELLDIR}/gsi_mean${thiscycle}_${conv_radar_flag}.sh
           #${SBATCHSELLDIR}/gsi_mean${thiscycle}_${conv_radar_flag}.sh >& ${SBATCHSELLDIR}/gsi_mean${thiscycle}_${conv_radar_flag}.log
-          sbatch ${SBATCHSELLDIR}/gsi_mean${thiscycle}_${conv_radar_flag}.sh
+          sbatch ${SBATCHSELLDIR}/gsi_mean${thiscycle}.sh
 
         fi
 
@@ -913,7 +899,7 @@ EOF
           imem=1
           ens_size=${ENSSIZE_REAL}
 
-          rm -f ${SBATCHSELLDIR}/gsi_mem${thiscycle}_${memstr4}_${conv_radar_flag}.sh
+          rm -f ${SBATCHSELLDIR}/gsi_mem${thiscycle}_${memstr4}.sh
 
           while [ ${imem} -le ${ens_size}  ]; do
 
@@ -926,12 +912,12 @@ EOF
 
             declare -A jobs_gsi_mem
 
-            cat << EOF > ${SBATCHSELLDIR}/gsi_mem${thiscycle}_${memstr4}_${conv_radar_flag}.sh
+            cat << EOF > ${SBATCHSELLDIR}/gsi_mem${thiscycle}_${memstr4}.sh
 #!/bin/bash
 #SBATCH -A ${ACCOUNT}
 #SBATCH -J gsimem_${thiscycletime}_${imem}
-#SBATCH -o ./jobgsi_mem${thiscycle}_${memstr4}_${conv_radar_flag}_%j.out
-#SBATCH -e ./jobgsi_mem${thiscycle}_${memstr4}_${conv_radar_flag}_%j.err
+#SBATCH -o ./jobgsi_mem${thiscycle}_${memstr4}_%j.out
+#SBATCH -e ./jobgsi_mem${thiscycle}_${memstr4}_%j.err
 #SBATCH -n ${corenum}
 #SBATCH --partition=${QUEUE}
 #SBATCH -t 00:15:00
@@ -944,8 +930,7 @@ EOF
   export STATIC_DIR_GSI=${STATIC_DIR_GSI}
   export ANALYSIS_TIME=${thiscycle}
   export WORK_ROOT=\${DATAHOME}/\${ANALYSIS_TIME}
-  export RADAR_ONLY=${if_radar}
-  export CONV_ONLY=${if_conv}
+  export CONV_RADAR_FLAG=${conv_radar_flag}
   export PROC=${corenum}
   export OMP_THREADS_NUM=2
 
@@ -962,7 +947,7 @@ EOF
   fi
 
 EOF
-            jobreturn=$(sbatch ${SBATCHSELLDIR}/gsi_mem${thiscycle}_${memstr4}_${conv_radar_flag}.sh)
+            jobreturn=$(sbatch ${SBATCHSELLDIR}/gsi_mem${thiscycle}_${memstr4}.sh)
             jobs_gsi_mem[$memstr4]=${jobreturn##* }
             echo "Member-${imem}, $jobreturn"
 
@@ -987,7 +972,7 @@ EOF
                   case ${jobstatus} in
                       TIMEOUT )
                           #failed+=($mem)
-                          jobscript=${SBATCHSELLDIR}/gsi_mem${thiscycle}_${mem}_${conv_radar_flag}.sh
+                          jobscript=${SBATCHSELLDIR}/gsi_mem${thiscycle}_${mem}.sh
                           echo "Resubmitting ${jobscript} ......"
                           jobreturn=$(sbatch ${jobscript})
                           jobs_gsi_mem[$mem]=${jobreturn##* }
@@ -1061,15 +1046,15 @@ EOF
           echo "$(date +%Y-%m-%d_%H:%M): Run EnKF for cycle ${thiscycle} with conv_radar_flag = ${conv_radar_flag}"
           rm -f ${DATABASE_DIR}/cycle/${thiscycle}/EnKF_DONE_RADAR
 
-          cat << EOF > ${SBATCHSELLDIR}/EnKF${thiscycle}_${conv_radar_flag}.sh
+          cat << EOF > ${SBATCHSELLDIR}/EnKF${thiscycle}.sh
 #!/bin/bash
 #SBATCH -A ${ACCOUNT}
-#SBATCH -J EnKF_${thiscycletime}_${conv_radar_flag}
-#SBATCH -o ./jobEnKF${thiscycle}_${conv_radar_flag}_%j.out
-#SBATCH -e ./jobEnKF${thiscycle}_${conv_radar_flag}_%j.err
+#SBATCH -J EnKF_${thiscycletime}
+#SBATCH -o ./jobEnKF${thiscycle}_%j.out
+#SBATCH -e ./jobEnKF${thiscycle}_%j.err
 #SBATCH -n ${TASKNUM_enkf}
 #SBATCH --partition=${QUEUE}
-#SBATCH --tasks-per-node=2
+#SBATCH --exclusive
 #SBATCH -t 01:30:00
 
   export GSI_ROOT=${GSI_ROOT}
@@ -1083,13 +1068,10 @@ EOF
   export NLATS=${nlat}
   export NLEVS=${nlev}
   export ENKF_STATIC=${STATIC_DIR_GSI}
-  export RADAR_ONLY=${if_radar}
-  export CONV_ONLY=${if_conv}
+  export CONV_RADAR_FLAG=${conv_radar_flag}
   export IF_RH=${if_rh}
   #export BEGPROC=5600
   export PROC=${TASKNUM_enkf}
-  #export OMP_NUM_THREADS=${OMPTHREADS_enkf}
-  #export IBRUN_TASKS_PER_NODE=$(( 56 / ${OMPTHREADS_enkf} ))
   export CCPP_SUITE=${CCPP_SUITE}
 
   rm -f \${WORK_ROOT}/enkfFAILED \${WORK_ROOT}/enkfSUCCESS
@@ -1107,35 +1089,41 @@ EOF
 
           #chmod u+x ${SBATCHSELLDIR}/EnKF${thiscycle}_${conv_radar_flag}.sh
           #${SBATCHSELLDIR}/EnKF${thiscycle}_${conv_radar_flag}.sh >& ${SBATCHSELLDIR}/EnKF${thiscycle}_${conv_radar_flag}.log
-          sbatch ${SBATCHSELLDIR}/EnKF${thiscycle}_${conv_radar_flag}.sh
+          #sbatch ${SBATCHSELLDIR}/EnKF${thiscycle}_${conv_radar_flag}.sh
+          sbatch ${SBATCHSELLDIR}/EnKF${thiscycle}.sh
 
         fi
 
-        if [ ${conv_radar_flag} -eq 1 ]; then
-            echo "Waiting for ${DATABASE_DIR}/cycle/${thiscycle}/EnKF_DONE_CONV ...."
-            while [ ! -e ${DATABASE_DIR}/cycle/${thiscycle}/EnKF_DONE_CONV ] ; do
-              sleep 20
-            done
-        fi
+        echo "Waiting for ${DATABASE_DIR}/cycle/${thiscycle}/EnKF_DONE ...."
+        while [ ! -e ${DATABASE_DIR}/cycle/${thiscycle}/EnKF_DONE ] ; do
+          sleep 20
+        done
 
-        if [ ${conv_radar_flag} -eq 2 ]; then
-            echo "Waiting for ${DATABASE_DIR}/cycle/${thiscycle}/EnKF_DONE_RADAR ...."
-            while [ ! -e ${DATABASE_DIR}/cycle/${thiscycle}/EnKF_DONE_RADAR ] ; do
-              sleep 20
-            done
-        fi
+        #if [ ${conv_radar_flag} -eq 1 ]; then
+        #    echo "Waiting for ${DATABASE_DIR}/cycle/${thiscycle}/EnKF_DONE_CONV ...."
+        #    while [ ! -e ${DATABASE_DIR}/cycle/${thiscycle}/EnKF_DONE_CONV ] ; do
+        #      sleep 20
+        #    done
+        #fi
+        #
+        #if [ ${conv_radar_flag} -eq 2 ]; then
+        #    echo "Waiting for ${DATABASE_DIR}/cycle/${thiscycle}/EnKF_DONE_RADAR ...."
+        #    while [ ! -e ${DATABASE_DIR}/cycle/${thiscycle}/EnKF_DONE_RADAR ] ; do
+        #      sleep 20
+        #    done
+        #fi
 
-        if [ ${both_conv_radar} -ne 1 ] ; then
-          conv_radar_flag=3
-        fi
-
-        if_skip_convobs=no
-        if_skip_radarobs=no
-        if_skip_fv3=no
-        if_skip_fgmean=no
-
-        (( conv_radar_flag = conv_radar_flag + 1 ))
-    done
+        #if [ ${both_conv_radar} -ne 1 ] ; then
+        #  conv_radar_flag=3
+        #fi
+        #
+        #if_skip_convobs=no
+        #if_skip_radarobs=no
+        #if_skip_fv3=no
+        #if_skip_fgmean=no
+        #
+        #(( conv_radar_flag = conv_radar_flag + 1 ))
+    #done
 
     if [ ${if_skip_recenter} == 'no'  ]; then
       echo "$(date +%Y-%m-%d_%H:%M): Recenter procedure for cycle ${thiscycle}"
@@ -1148,7 +1136,7 @@ EOF
 #SBATCH -o ./jobrecent${thiscycle}_%j.out
 #SBATCH -e ./jobrecent${thiscycle}_%j.err
 #SBATCH -n 48
-#SBATCH --partition=${QUEUE1}
+#SBATCH --partition=${QUEUE2}
 #SBATCH -t 00:30:00
 
   export DATAHOME=${DATABASE_DIR}/cycle
@@ -1177,12 +1165,12 @@ EOF
 
       #${SH} ${SBATCHSELLDIR}/recent${thiscycle}.sh >& ${SBATCHSELLDIR}/recent${thiscycle}.log
       sbatch ${SBATCHSELLDIR}/recent${thiscycle}.sh
-    fi
 
-    echo "Waiting for ${DATABASE_DIR}/cycle/${thiscycle}/recentSUCCESS"
-    while [[ ! -f ${DATABASE_DIR}/cycle/${thiscycle}/recentSUCCESS ]]; do
-        sleep 10
-    done
+      echo "Waiting for ${DATABASE_DIR}/cycle/${thiscycle}/recentSUCCESS"
+      while [[ ! -f ${DATABASE_DIR}/cycle/${thiscycle}/recentSUCCESS ]]; do
+          sleep 10
+      done
+    fi
 
     if [ ${if_skip_updateLBC} == 'no' ]; then
 
